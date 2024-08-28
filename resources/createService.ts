@@ -1,25 +1,41 @@
 import * as AWS from "aws-sdk";
-import { Handler, SQSEvent, SQSRecord } from "aws-lambda";
+import { DynamoDBRecord, DynamoDBStreamEvent, Handler } from "aws-lambda";
 import {
   CloudFormationClient,
   CreateStackCommand,
   CreateStackCommandInput,
+  DeleteStackCommand,
+  DeleteStackCommandInput,
 } from "@aws-sdk/client-cloudformation";
-import { SQSMessage } from "../types";
 import PonderStack from "../cdk.out/PonderStack.template.json";
 
 AWS.config.update({ region: "us-east-1" });
 
-export const handler: Handler = async (event: SQSEvent) => {
+const client = new CloudFormationClient({});
+
+export const handler: Handler = async (event: DynamoDBStreamEvent) => {
   for (const message of event.Records) {
-    await createStackAsync(message);
+    const event = message.eventName;
+    if (event === "INSERT") {
+      await createStackAsync(message);
+    } else if (event === "REMOVE") {
+      await deleteStackAsync(message);
+    }
   }
 };
 
-async function createStackAsync(message: SQSRecord) {
+async function createStackAsync(message: DynamoDBRecord) {
   try {
-    const body: SQSMessage = JSON.parse(message.body);
-    const client = new CloudFormationClient({});
+    if (!message.dynamodb?.Keys) throw new Error("No Data exists on record");
+    const userId: string = message.dynamodb.Keys["userId"].S as string;
+    const githubUrl: string = message.dynamodb.Keys["githubUrl"].S as string;
+    const versionSlug: string = message.dynamodb.Keys["versionSlug"]
+      .S as string;
+    const body = {
+      userId,
+      githubUrl,
+      versionSlug,
+    };
     const stackName = `${body.userId}-${body.githubUrl}-${body.versionSlug}`;
     const input: CreateStackCommandInput = {
       StackName: stackName,
@@ -53,7 +69,33 @@ async function createStackAsync(message: SQSRecord) {
     };
     const command = new CreateStackCommand(input);
     const response = await client.send(command);
-    console.log("Created Stack ID :", response?.StackId);
+    console.log("Creating Stack with ID :", response?.StackId);
+  } catch (err) {
+    console.error("An error occurred");
+    throw err;
+  }
+}
+
+async function deleteStackAsync(message: DynamoDBRecord) {
+  try {
+    if (!message.dynamodb?.Keys) throw new Error("No Data exists on record");
+    const userId: string = message.dynamodb.Keys["userId"].S as string;
+    const githubUrl: string = message.dynamodb.Keys["githubUrl"].S as string;
+    const versionSlug: string = message.dynamodb.Keys["versionSlug"]
+      .S as string;
+    const body = {
+      userId,
+      githubUrl,
+      versionSlug,
+    };
+    const stackName = `${body.userId}-${body.githubUrl}-${body.versionSlug}`;
+    const input: DeleteStackCommandInput = {
+      StackName: stackName,
+      DeletionMode: "FORCE_DELETE_STACK",
+    };
+    const command = new DeleteStackCommand(input);
+    await client.send(command);
+    console.log("Deleting Stack with ID :", stackName);
   } catch (err) {
     console.error("An error occurred");
     throw err;
