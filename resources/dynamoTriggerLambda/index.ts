@@ -31,10 +31,14 @@ async function createStackAsync(message: DynamoDBRecord) {
     const githubUrl: string = message.dynamodb.Keys["githubUrl"].S as string;
     const versionSlug: string = message.dynamodb.Keys["versionSlug"]
       .S as string;
+    const githubToken: string = message.dynamodb.Keys["githubToken"]
+      .S as string;
+
     const body = {
       userId,
       githubUrl,
       versionSlug,
+      githubToken,
     };
     const stackName = `${body.userId}-${body.githubUrl}-${body.versionSlug}`;
     const input: CreateStackCommandInput = {
@@ -54,6 +58,11 @@ async function createStackAsync(message: DynamoDBRecord) {
         {
           ParameterKey: "userId",
           ParameterValue: body.userId,
+          UsePreviousValue: false,
+        },
+        {
+          ParameterKey: "githubToken",
+          ParameterValue: body.githubToken,
           UsePreviousValue: false,
         },
       ],
