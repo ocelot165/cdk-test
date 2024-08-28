@@ -7,7 +7,7 @@ import {
   DeleteStackCommand,
   DeleteStackCommandInput,
 } from "@aws-sdk/client-cloudformation";
-import PonderStack from "../cdk.out/PonderStack.template.json";
+import PonderStack from "./PonderStack.template.json";
 
 AWS.config.update({ region: "us-east-1" });
 
