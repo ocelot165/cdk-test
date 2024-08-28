@@ -10,7 +10,7 @@ import { createCluster } from "./resources/ecsCluster";
 import { createECSExec } from "./resources/encryption";
 import { createFargate } from "./resources/fargate";
 
-export default class InfraStack extends cdk.Stack {
+export default class PonderStack extends cdk.Stack {
   vpc: cdk.aws_ec2.Vpc;
   alb: ApplicationLoadBalancer;
   albSg: SecurityGroup;
