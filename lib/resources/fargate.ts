@@ -5,7 +5,6 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
-import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import { aws_applicationautoscaling } from "aws-cdk-lib";
 import InfraStack from "../ponderStack";
 
@@ -100,6 +99,7 @@ export function createFargate(stack: InfraStack) {
     assignPublicIp: false,
     healthCheckGracePeriod: cdk.Duration.seconds(60),
     enableExecuteCommand: true,
+    vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
   });
 
   const scaling = service.autoScaleTaskCount({
