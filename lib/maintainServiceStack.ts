@@ -5,6 +5,7 @@ import { DynamoDBStreamsToLambda } from "@aws-solutions-constructs/aws-dynamodbs
 import { Construct } from "constructs";
 import path from "path";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 
 export class MaintainServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -30,27 +31,12 @@ export class MaintainServiceStack extends cdk.Stack {
       },
     });
 
-    const { apiGateway } = new ApiGatewayToLambda(
-      this,
-      "ApiGatewayToLambdaPattern",
-      {
-        existingLambdaObj: userFacingLambda,
-        apiGatewayProps: {
-          proxy: false,
-        },
-      }
-    );
-
-    const createPonderApi = apiGateway.root.addResource("createPonderService");
-    createPonderApi.addMethod("POST");
-
-    const deletePonderApi = apiGateway.root.addResource("deletePonderService");
-    deletePonderApi.addMethod("POST");
-
-    const getPonderServiceStatus = apiGateway.root.addResource(
-      "getPonderServiceStatus"
-    );
-    getPonderServiceStatus.addMethod("GET");
+    new ApiGatewayToLambda(this, "ApiGatewayToLambdaPattern", {
+      existingLambdaObj: userFacingLambda,
+      apiGatewayProps: {
+        proxy: true,
+      },
+    });
 
     const { dynamoTable } = new LambdaToDynamoDB(
       this,
