@@ -18,6 +18,7 @@ app.use(express.json());
 
 app.get("/getPonderServiceStatus", (req, res) => {
   console.log("in get ponder status");
+  res.status(200).send("in get ponder status");
 });
 
 app.post("/createPonderService", async (req, res) => {
@@ -37,6 +38,7 @@ app.post("/createPonderService", async (req, res) => {
       },
     })
   );
+  res.status(200).send();
 });
 
 app.post("/deletePonderService", async (req, res) => {
@@ -48,6 +50,7 @@ app.post("/deletePonderService", async (req, res) => {
       Key: { id: requestJSON.id },
     })
   );
+  res.status(200).send();
 });
 
 app.use((_: express.Request, res: express.Response) => {
