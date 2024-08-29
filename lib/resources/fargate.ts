@@ -67,14 +67,21 @@ export function createFargate(stack: InfraStack) {
   });
 
   const container = taskDefinition.addContainer("ECSContainer", {
-    image: ecs.ContainerImage.fromRegistry("nginx:latest"),
+    image: ecs.ContainerImage.fromRegistry("timbru31/node-alpine-git:latest"),
     logging: ecs.LogDriver.awsLogs({
-      streamPrefix: "demoLogs",
+      streamPrefix: "ponderInstanceLogs",
       logGroup: containerLogGroup,
     }),
     linuxParameters: new ecs.LinuxParameters(stack, "NodeExec", {
       initProcessEnabled: true,
     }),
+    environment: {
+      DB_ENDPOINT: stack.db.instanceEndpoint.socketAddress,
+    },
+    entryPoint: ["sh", "-c"],
+    command: [
+      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && touch .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && ponder serve`,
+    ],
   });
 
   container.addPortMappings({ containerPort: 80 });
@@ -158,8 +165,6 @@ export function createFargate(stack: InfraStack) {
       healthyHttpCodes: "200",
     },
   });
-
-  //   const anCert = acm.Certificate.fromCertificateArn(stack, "AnCert", "ARN");
 
   const httpslistener = stack.alb.addListener("HttpsListener", {
     port: 80,

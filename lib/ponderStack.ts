@@ -23,6 +23,9 @@ export default class PonderStack extends cdk.Stack {
   githubUrl: string;
   userId: string;
   githubToken: string;
+  db: cdk.aws_rds.DatabaseInstance;
+  chainId: string;
+  rpcUrl: string;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -46,6 +49,18 @@ export default class PonderStack extends cdk.Stack {
     }).valueAsString;
 
     this.githubToken = new cdk.CfnParameter(this, "githubToken", {
+      description: "Version Slug",
+      type: "String",
+      default: "",
+    }).valueAsString;
+
+    this.chainId = new cdk.CfnParameter(this, "chainId", {
+      description: "Version Slug",
+      type: "String",
+      default: "",
+    }).valueAsString;
+
+    this.rpcUrl = new cdk.CfnParameter(this, "rpcUrl", {
       description: "Version Slug",
       type: "String",
       default: "",

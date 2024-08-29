@@ -32,6 +32,8 @@ app.post("/createPonderService", async (req, res) => {
         githubUrl: requestJSON.githubUrl,
         versionSlug: requestJSON.versionSlug,
         githubToken: requestJSON.githubToken,
+        chainId: requestJSON.chainId,
+        rpcUrl: requestJSON.rpcUrl,
       },
     })
   );

@@ -16,6 +16,8 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     publiclyAccessible: false,
   });
 
+  stack.db = db;
+
   db.connections.allowFromAnyIpv4(
     ec2.Port.tcp(5432),
     "Open port for connection"
@@ -87,14 +89,21 @@ export function createIndexerUsingFargate(stack: InfraStack) {
   );
 
   const container = taskDefinition.addContainer("IndexerECSContainer", {
-    image: ecs.ContainerImage.fromRegistry("nginx:latest"),
+    image: ecs.ContainerImage.fromRegistry("timbru31/node-alpine-git:latest"),
     logging: ecs.LogDriver.awsLogs({
-      streamPrefix: "demoLogs",
+      streamPrefix: "ponderInstanceLogs",
       logGroup: containerLogGroup,
     }),
     linuxParameters: new ecs.LinuxParameters(stack, "IndexerNodeExec", {
       initProcessEnabled: true,
     }),
+    environment: {
+      DB_ENDPOINT: stack.db.instanceEndpoint.socketAddress,
+    },
+    entryPoint: ["sh", "-c"],
+    command: [
+      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && touch .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && ponder start`,
+    ],
   });
 
   container.addPortMappings({ containerPort: 80 });
@@ -109,7 +118,7 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     ec2.Port.tcp(80)
   );
 
-  new ecs.FargateService(stack, "IndexerECSService", {
+  const service = new ecs.FargateService(stack, "IndexerECSService", {
     cluster: stack.cluster,
     taskDefinition,
     desiredCount: 1,
