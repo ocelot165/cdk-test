@@ -80,11 +80,22 @@ export function createFargate(stack: InfraStack) {
     },
     entryPoint: ["sh", "-c"],
     command: [
-      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && touch .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && ponder serve`,
+      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && ls && touch .env.local && echo "PONDER_RPC_URL_${stack.chainId}=${stack.rpcUrl}" >> .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && npm run serve`,
     ],
   });
 
   container.addPortMappings({ containerPort: 80 });
+
+  const albSg = new ec2.SecurityGroup(stack, "SecurityGroupAlb", {
+    vpc: stack.vpc,
+    allowAllOutbound: true,
+  });
+
+  albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
+
+  albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443));
+
+  stack.albSg = albSg;
 
   const ecsSG = new ec2.SecurityGroup(stack, "ECSSecurityGroup", {
     vpc: stack.vpc,
@@ -96,20 +107,37 @@ export function createFargate(stack: InfraStack) {
     ec2.Port.tcp(80)
   );
 
-  const service = new ecs.FargateService(stack, "ECSService", {
-    cluster: stack.cluster,
-    taskDefinition,
-    desiredCount: 1,
-    securityGroups: [ecsSG],
-    minHealthyPercent: 100,
-    maxHealthyPercent: 200,
-    assignPublicIp: false,
-    healthCheckGracePeriod: cdk.Duration.seconds(60),
-    enableExecuteCommand: true,
-    vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
-  });
+  const service =
+    new cdk.aws_ecs_patterns.ApplicationLoadBalancedFargateService(
+      stack,
+      "ECSService",
+      {
+        cluster: stack.cluster,
+        taskDefinition,
+        desiredCount: 1,
+        minHealthyPercent: 100,
+        maxHealthyPercent: 200,
+        assignPublicIp: true,
+        healthCheckGracePeriod: cdk.Duration.seconds(60),
+        enableExecuteCommand: true,
+        taskSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
+        securityGroups: [ecsSG],
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        // healthCheck: {
+        //   healthyThresholdCount: 2,
+        //   unhealthyThresholdCount: 3,
+        //   interval: cdk.Duration.seconds(10),
+        //   timeout: cdk.Duration.seconds(5),
+        //   healthyHttpCodes: "200",
+        // },
+      }
+    );
 
-  const scaling = service.autoScaleTaskCount({
+  stack.alb = service.loadBalancer;
+
+  stack.alb.addSecurityGroup(albSg);
+
+  const scaling = service.service.autoScaleTaskCount({
     maxCapacity: 6,
     minCapacity: 1,
   });
@@ -118,7 +146,7 @@ export function createFargate(stack: InfraStack) {
     period: cdk.Duration.minutes(1),
   };
 
-  const scaleDownCpuUtilization = service.metricCpuUtilization(
+  const scaleDownCpuUtilization = service.service.metricCpuUtilization(
     mathExpressionOptions
   );
 
@@ -135,7 +163,7 @@ export function createFargate(stack: InfraStack) {
       aws_applicationautoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
   });
 
-  const scaleUpCpuUtilization = service.metricCpuUtilization(
+  const scaleUpCpuUtilization = service.service.metricCpuUtilization(
     mathExpressionOptions
   );
 
@@ -150,29 +178,52 @@ export function createFargate(stack: InfraStack) {
       aws_applicationautoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
   });
 
-  const targetGroup = new elbv2.ApplicationTargetGroup(stack, "TargetGroup", {
-    targets: [service],
-    protocol: elbv2.ApplicationProtocol.HTTP,
-    vpc: stack.vpc,
-    port: 80,
-    deregistrationDelay: cdk.Duration.seconds(30),
-    healthCheck: {
-      path: "/",
-      healthyThresholdCount: 2,
-      unhealthyThresholdCount: 3,
-      interval: cdk.Duration.seconds(10),
-      timeout: cdk.Duration.seconds(5),
-      healthyHttpCodes: "200",
-    },
-  });
+  // const targetGroup = new elbv2.ApplicationTargetGroup(stack, "TargetGroup", {
+  //   targets: [service.service],
+  //   protocol: elbv2.ApplicationProtocol.HTTP,
+  //   vpc: stack.vpc,
+  //   port: 80,
+  //   deregistrationDelay: cdk.Duration.seconds(30),
+  //   healthCheck: {
+  //     path: "/health",
+  //     healthyThresholdCount: 2,
+  //     unhealthyThresholdCount: 3,
+  //     interval: cdk.Duration.seconds(10),
+  //     timeout: cdk.Duration.seconds(5),
+  //     healthyHttpCodes: "200",
+  //   },
+  // });
 
-  const httpslistener = stack.alb.addListener("HttpsListener", {
-    port: 80,
-    open: true,
-    // certificates: [anCert],
-  });
+  // service.listener.addTargets("reeee343", {
+  //   port: 80,
+  //   healthCheck: {
+  //     path: "/health",
+  //     healthyThresholdCount: 2,
+  //     unhealthyThresholdCount: 3,
+  //     interval: cdk.Duration.seconds(10),
+  //     timeout: cdk.Duration.seconds(5),
+  //     healthyHttpCodes: "200",
+  //   },
+  //   targets: [service.service],
+  // });
 
-  httpslistener.addAction("HttpsDefaultAction", {
-    action: elbv2.ListenerAction.forward([targetGroup]),
-  });
+  // targetGroup.node.addDependency(service.loadBalancer.listeners[0]);
+  // service.service.node.addDependency(service.loadBalancer);
+
+  // service.listener.addTargetGroups("target-group", {
+  //   targetGroups: [targetGroup],
+  // });
+
+  // targetGroup.node.addDependency(service.loadBalancer);
+  // service.service.node.addDependency(service.loadBalancer);
+  // service.service.node.addDependency(service.loadBalancer.listeners[0]);
+  // // const httpslistener = stack.alb.addListener("HttpsListener", {
+  // //   port: 80,
+  // //   open: true,
+  // //   // certificates: [anCert],
+  // // });
+
+  // service.listener.addAction("HttpsDefaultAction", {
+  //   action: elbv2.ListenerAction.forward([targetGroup]),
+  // });
 }
