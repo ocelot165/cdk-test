@@ -10,6 +10,12 @@ import { createCluster } from "./resources/ecsCluster";
 import { createECSExec } from "./resources/encryption";
 import { createFargate } from "./resources/fargate";
 import { createIndexerUsingFargate } from "./resources/indexer";
+import { ConfigProps } from "./config";
+
+// 1. New type for the props adding in our configuration
+type AwsEnvStackProps = cdk.StackProps & {
+  config?: Readonly<ConfigProps>;
+};
 
 export default class PonderStack extends cdk.Stack {
   vpc: cdk.aws_ec2.Vpc;
@@ -19,7 +25,6 @@ export default class PonderStack extends cdk.Stack {
   kmsKey: cdk.aws_kms.Key;
   execBucket: cdk.aws_s3.Bucket;
   cluster: cdk.aws_ecs.Cluster;
-  accessToken: string;
   githubUrl: string;
   userId: string;
   githubToken: string;
@@ -27,51 +32,57 @@ export default class PonderStack extends cdk.Stack {
   chainId: string;
   rpcUrl: string;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: AwsEnvStackProps) {
     super(scope, id, props);
 
-    this.accessToken = new cdk.CfnParameter(this, "version", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    let config = props?.config || {};
 
-    this.githubUrl = new cdk.CfnParameter(this, "githubUrl", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    this.githubUrl = config
+      ? process.env.GITHUB_URL!
+      : new cdk.CfnParameter(this, "githubUrl", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
 
-    this.userId = new cdk.CfnParameter(this, "userId", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    this.userId = config
+      ? process.env.USER_ID!
+      : new cdk.CfnParameter(this, "userId", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
 
-    this.githubToken = new cdk.CfnParameter(this, "githubToken", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    this.githubToken = config
+      ? process.env.GITHUB_TOKEN!
+      : new cdk.CfnParameter(this, "githubToken", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
 
-    this.chainId = new cdk.CfnParameter(this, "chainId", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    this.chainId = config
+      ? process.env.CHAIN_ID!
+      : new cdk.CfnParameter(this, "chainId", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
 
-    this.rpcUrl = new cdk.CfnParameter(this, "rpcUrl", {
-      description: "Version Slug",
-      type: "String",
-      default: "",
-    }).valueAsString;
+    this.rpcUrl = config
+      ? process.env.RPC_URL!
+      : new cdk.CfnParameter(this, "rpcUrl", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
 
-    createVPC(this);
-    createALB(this);
-    createCDN(this);
     createECSExec(this);
+    createVPC(this);
+    // createALB(this);
     createCluster(this);
     createIndexerUsingFargate(this);
     createFargate(this);
+    // createCDN(this);
   }
 }
