@@ -6,6 +6,7 @@ import {
   PutCommand,
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { uuid } from "uuidv4";
 
 const client = new DynamoDBClient({});
 
@@ -24,11 +25,13 @@ app.get("/getPonderServiceStatus", (req, res) => {
 app.post("/createPonderService", async (req, res) => {
   console.log("in create ponder service");
   let requestJSON = req.body;
+  const id = `e${uuid()}`;
   await dynamo.send(
     new PutCommand({
       TableName: tableName,
       Item: {
-        id: requestJSON.id,
+        partitionKey: id,
+        id: id,
         userId: requestJSON.userId,
         githubUrl: requestJSON.githubUrl,
         versionSlug: requestJSON.versionSlug,

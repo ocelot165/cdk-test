@@ -15,26 +15,38 @@ const client = new CloudFormationClient({});
 
 export const handler: Handler = async (event: DynamoDBStreamEvent) => {
   for (const message of event.Records) {
-    const event = message.eventName;
-    if (event === "INSERT") {
-      await createStackAsync(message);
-    } else if (event === "REMOVE") {
-      await deleteStackAsync(message);
+    try {
+      console.log(message.dynamodb?.NewImage);
+      console.log(message.dynamodb?.Keys);
+      console.log(message.eventName);
+      const event = message.eventName;
+      if (event === "INSERT") {
+        await createStackAsync(message);
+      } else if (event === "REMOVE") {
+        await deleteStackAsync(message);
+      }
+    } catch (error) {
+      console.log(error);
     }
   }
+  return "processed task(s)";
 };
 
 async function createStackAsync(message: DynamoDBRecord) {
   try {
-    if (!message.dynamodb?.Keys) throw new Error("No Data exists on record");
-    const userId: string = message.dynamodb.Keys["userId"].S as string;
-    const githubUrl: string = message.dynamodb.Keys["githubUrl"].S as string;
-    const versionSlug: string = message.dynamodb.Keys["versionSlug"]
+    if (!message.dynamodb?.NewImage)
+      throw new Error("No Data exists on record");
+    console.log(message.dynamodb?.NewImage);
+    const id: string = message.dynamodb?.NewImage["id"].S as string;
+    const userId: string = message.dynamodb?.NewImage["userId"].S as string;
+    const githubUrl: string = message.dynamodb?.NewImage["githubUrl"]
       .S as string;
-    const githubToken: string = message.dynamodb.Keys["githubToken"]
+    const versionSlug: string = message.dynamodb?.NewImage["versionSlug"]
       .S as string;
-    const rpcUrl: string = message.dynamodb.Keys["rpcUrl"].S as string;
-    const chainId: string = message.dynamodb.Keys["chainId"].S as string;
+    const githubToken: string = message.dynamodb?.NewImage["githubToken"]
+      .S as string;
+    const rpcUrl: string = message.dynamodb?.NewImage["rpcUrl"].S as string;
+    const chainId: string = message.dynamodb?.NewImage["chainId"].S as string;
 
     const body = {
       userId,
@@ -44,7 +56,7 @@ async function createStackAsync(message: DynamoDBRecord) {
       rpcUrl,
       chainId,
     };
-    const stackName = `${body.userId}-${body.githubUrl}-${body.versionSlug}`;
+    const stackName = id;
     const input: CreateStackCommandInput = {
       StackName: stackName,
       TemplateBody: JSON.stringify(PonderStack),
@@ -80,15 +92,15 @@ async function createStackAsync(message: DynamoDBRecord) {
           UsePreviousValue: false,
         },
       ],
-      DisableRollback: false,
       Capabilities: [
-        "CAPABILITY_IAM",
-        "CAPABILITY_NAMED_IAM",
         "CAPABILITY_AUTO_EXPAND",
+        "CAPABILITY_AUTO_EXPAND",
+        "CAPABILITY_NAMED_IAM",
       ],
-      ResourceTypes: ["AWS::*"],
+      RoleARN: process.env.CFM_ROLE_ARN,
+      // ResourceTypes: ["AWS::*"],
       OnFailure: "ROLLBACK",
-      EnableTerminationProtection: true,
+      EnableTerminationProtection: false,
     };
     const command = new CreateStackCommand(input);
     const response = await client.send(command);
@@ -99,6 +111,7 @@ async function createStackAsync(message: DynamoDBRecord) {
   }
 }
 
+//TODO-fix
 async function deleteStackAsync(message: DynamoDBRecord) {
   try {
     if (!message.dynamodb?.Keys) throw new Error("No Data exists on record");
