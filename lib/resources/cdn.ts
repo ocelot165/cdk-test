@@ -1,7 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import InfraStack from "../ponderStack";
 
 export function createCDN(stack: InfraStack) {
@@ -10,26 +9,18 @@ export function createCDN(stack: InfraStack) {
     connectionTimeout: cdk.Duration.seconds(10),
     readTimeout: cdk.Duration.seconds(30),
     keepaliveTimeout: cdk.Duration.seconds(5),
-    protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+    protocolPolicy: cloudfront.OriginProtocolPolicy.MATCH_VIEWER,
   });
-
-  //   const anCert = acm.Certificate.fromCertificateArn(
-  //     stack,
-  //     "CDNCertificateARN",
-  //     "ARN"
-  //   );
 
   const cdn = new cloudfront.Distribution(stack, "PonderDistribution", {
     defaultBehavior: {
       origin: cdnOrigin,
-      allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+      allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
       cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.ALLOW_ALL,
       originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
       compress: true,
     },
-    // domainNames: ["adityanama.com"],
-    // certificate: anCert,
     priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
   });
 
