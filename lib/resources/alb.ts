@@ -21,14 +21,6 @@ export function createALB(stack: InfraStack) {
     vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
   });
 
-  const httplistener = alb.addListener("HttpListener", {
-    port: 80,
-    open: true,
-    defaultAction: elbv2.ListenerAction.fixedResponse(404, {
-      messageBody: "404 not found",
-    }),
-  });
-
   //   httplistener.addAction("HttpDefaultAction", {
   //     action: elbv2.ListenerAction.redirect({
   //       protocol: "HTTPS",
