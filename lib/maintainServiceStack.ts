@@ -6,6 +6,7 @@ import { Construct } from "constructs";
 import path from "path";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
 
 export class MaintainServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -31,12 +32,41 @@ export class MaintainServiceStack extends cdk.Stack {
       },
     });
 
-    new ApiGatewayToLambda(this, "ApiGatewayToLambdaPattern", {
-      existingLambdaObj: userFacingLambda,
-      apiGatewayProps: {
-        proxy: true,
+    const { apiGateway } = new ApiGatewayToLambda(
+      this,
+      "ApiGatewayToLambdaPattern",
+      {
+        existingLambdaObj: userFacingLambda,
+        apiGatewayProps: {
+          proxy: false,
+        },
+      }
+    );
+
+    const createPonderApi = apiGateway.root.addResource("createPonderService", {
+      defaultMethodOptions: {
+        authorizationType: cdk.aws_apigateway.AuthorizationType.NONE,
       },
     });
+
+    createPonderApi.addMethod("POST");
+
+    const deletePonderApi = apiGateway.root.addResource("deletePonderService", {
+      defaultMethodOptions: {
+        authorizationType: cdk.aws_apigateway.AuthorizationType.NONE,
+      },
+    });
+    deletePonderApi.addMethod("POST");
+
+    const getPonderServiceStatus = apiGateway.root.addResource(
+      "getPonderServiceStatus",
+      {
+        defaultMethodOptions: {
+          authorizationType: cdk.aws_apigateway.AuthorizationType.NONE,
+        },
+      }
+    );
+    getPonderServiceStatus.addMethod("GET");
 
     const { dynamoTable } = new LambdaToDynamoDB(
       this,
@@ -44,6 +74,7 @@ export class MaintainServiceStack extends cdk.Stack {
       {
         existingLambdaObj: userFacingLambda,
         dynamoTableProps: {
+          deletionProtection: false,
           tableName: "serviceTable",
           partitionKey: {
             name: "id",
@@ -82,5 +113,50 @@ export class MaintainServiceStack extends cdk.Stack {
       existingLambdaObj: dynamoTriggerLambda,
       existingTableInterface: dynamoTable,
     });
+
+    //@TODO- Granted too many permissions here, only specify whatever is necessary
+    dynamoTriggerLambda.role?.addManagedPolicy(
+      ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "FullAccessArnForDynamoTriggerLambda",
+        "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+      )
+    );
+    dynamoTriggerLambda.role?.addManagedPolicy(
+      ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "FullSSMArnForDynamoTriggerLambda",
+        "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
+      )
+    );
+    dynamoTriggerLambda.role?.addManagedPolicy(
+      ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "FullIAMArnForDynamoTriggerLambda",
+        "arn:aws:iam::aws:policy/IAMFullAccess"
+      )
+    );
+
+    const role = new cdk.aws_iam.Role(this, "MaintainServiceRole", {
+      assumedBy: new cdk.aws_iam.ServicePrincipal(
+        "cloudformation.amazonaws.com"
+      ),
+      managedPolicies: [
+        ManagedPolicy.fromManagedPolicyArn(
+          this,
+          "PowerUserAccessForServiceRole",
+          "arn:aws:iam::aws:policy/PowerUserAccess"
+        ),
+        ManagedPolicy.fromManagedPolicyArn(
+          this,
+          "IAMAccessForServiceRole",
+          "arn:aws:iam::aws:policy/IAMFullAccess"
+        ),
+      ],
+    });
+
+    const roleArn = role.roleArn;
+
+    dynamoTriggerLambda.addEnvironment("CFM_ROLE_ARN", roleArn);
   }
 }
