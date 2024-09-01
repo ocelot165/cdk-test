@@ -9,8 +9,8 @@ import ponderStack from "../ponderStack";
 export function createVPC(stack: ponderStack) {
   const vpc = new ec2.Vpc(stack, "Vpc", {
     cidr: "10.30.0.0/16", //IPs in Range - 65,536
-    natGateways: 3,
-    maxAzs: 3,
+    natGateways: 0,
+    createInternetGateway: true,
     subnetConfiguration: [
       {
         name: "Public",
@@ -42,12 +42,12 @@ export function createVPC(stack: ponderStack) {
     removalPolicy: cdk.RemovalPolicy.DESTROY,
   });
 
-  const logStream = new logs.LogStream(stack, "VpcFlowLogStream", {
+  new logs.LogStream(stack, "VpcFlowLogStream", {
     logGroup: logGroup,
     removalPolicy: cdk.RemovalPolicy.DESTROY,
   });
 
-  const flowLogs = new ec2.FlowLog(stack, "VpcFlowLog", {
+  new ec2.FlowLog(stack, "VpcFlowLog", {
     resourceType: ec2.FlowLogResourceType.fromVpc(vpc),
     destination: ec2.FlowLogDestination.toCloudWatchLogs(logGroup, vpcRole),
     trafficType: FlowLogTrafficType.ALL,
