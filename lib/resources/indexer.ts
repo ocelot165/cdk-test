@@ -10,10 +10,11 @@ export function createIndexerUsingFargate(stack: InfraStack) {
   const db = new DatabaseInstance(stack, "IndexedDataDb", {
     engine: DatabaseInstanceEngine.POSTGRES,
     vpc: stack.vpc,
-    vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PRIVATE_WITH_EGRESS },
-    deletionProtection: true,
+    vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED },
+    deletionProtection: false,
     multiAz: false,
     publiclyAccessible: false,
+    instanceType: new cdk.aws_ec2.InstanceType("t3.micro"),
   });
 
   stack.db = db;
@@ -102,7 +103,7 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     },
     entryPoint: ["sh", "-c"],
     command: [
-      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && touch .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && ponder start`,
+      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && ls && touch .env.local && echo "PONDER_RPC_URL_${stack.chainId}=${stack.rpcUrl}" >> .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && npm run start`,
     ],
   });
 
@@ -113,20 +114,17 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     allowAllOutbound: true,
   });
 
-  ecsSG.addIngressRule(
-    ec2.Peer.securityGroupId(stack.albSg.securityGroupId),
-    ec2.Port.tcp(80)
-  );
+  ecsSG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
 
-  const service = new ecs.FargateService(stack, "IndexerECSService", {
+  new ecs.FargateService(stack, "IndexerECSService", {
     cluster: stack.cluster,
     taskDefinition,
     desiredCount: 1,
     securityGroups: [ecsSG],
     minHealthyPercent: 100,
     maxHealthyPercent: 200,
-    assignPublicIp: false,
-    healthCheckGracePeriod: cdk.Duration.seconds(60),
+    assignPublicIp: true,
+    // healthCheckGracePeriod: cdk.Duration.seconds(60),
     enableExecuteCommand: true,
     vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
   });
