@@ -4,23 +4,43 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import InfraStack from "../ponderStack";
-import { DatabaseInstance, DatabaseInstanceEngine } from "aws-cdk-lib/aws-rds";
+import {
+  Credentials,
+  DatabaseInstance,
+  DatabaseInstanceEngine,
+  PostgresEngineVersion,
+} from "aws-cdk-lib/aws-rds";
+import { Dependable } from "constructs";
+import { Repository } from "aws-cdk-lib/aws-ecr";
 
 export function createIndexerUsingFargate(stack: InfraStack) {
   const db = new DatabaseInstance(stack, "IndexedDataDb", {
-    engine: DatabaseInstanceEngine.POSTGRES,
+    engine: DatabaseInstanceEngine.postgres({
+      version: PostgresEngineVersion.VER_11,
+    }),
     vpc: stack.vpc,
     vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED },
     deletionProtection: false,
     multiAz: false,
     publiclyAccessible: false,
     instanceType: new cdk.aws_ec2.InstanceType("t3.micro"),
+    backupRetention: cdk.Duration.days(0),
+    monitoringInterval: cdk.Duration.days(0),
+    port: 5432,
+    databaseName: "ponderDb",
+    credentials: Credentials.fromPassword(
+      "ponderUser",
+      cdk.SecretValue.unsafePlainText("ponderPass")
+    ),
+    parameters: {
+      "rds.force_ssl": "0",
+    },
   });
 
   stack.db = db;
 
   db.connections.allowFromAnyIpv4(
-    ec2.Port.tcp(5432),
+    ec2.Port.allTraffic(),
     "Open port for connection"
   );
 
@@ -45,21 +65,21 @@ export function createIndexerUsingFargate(stack: InfraStack) {
         ],
         resources: ["*"],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:PutObject"],
-        resources: [`${stack.execBucket.bucketArn}/*`],
-      }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:GetEncryptionConfiguration"],
-        resources: [stack.execBucket.bucketArn],
-      }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["kms:Decrypt"],
-        resources: [stack.kmsKey.keyArn],
-      }),
+      // new iam.PolicyStatement({
+      //   effect: iam.Effect.ALLOW,
+      //   actions: ["s3:PutObject"],
+      //   resources: [`${stack.execBucket.bucketArn}/*`],
+      // }),
+      // new iam.PolicyStatement({
+      //   effect: iam.Effect.ALLOW,
+      //   actions: ["s3:GetEncryptionConfiguration"],
+      //   resources: [stack.execBucket.bucketArn],
+      // }),
+      // new iam.PolicyStatement({
+      //   effect: iam.Effect.ALLOW,
+      //   actions: ["kms:Decrypt"],
+      //   resources: [stack.kmsKey.keyArn],
+      // }),
     ],
   });
 
@@ -90,22 +110,28 @@ export function createIndexerUsingFargate(stack: InfraStack) {
   );
 
   const container = taskDefinition.addContainer("IndexerECSContainer", {
-    image: ecs.ContainerImage.fromRegistry("timbru31/node-alpine-git:latest"),
+    image: ecs.ContainerImage.fromDockerImageAsset(stack.dockerImageAsset),
     logging: ecs.LogDriver.awsLogs({
       streamPrefix: "ponderInstanceLogs",
       logGroup: containerLogGroup,
     }),
-    linuxParameters: new ecs.LinuxParameters(stack, "IndexerNodeExec", {
-      initProcessEnabled: true,
-    }),
+    // linuxParameters: new ecs.LinuxParameters(stack, "IndexerNodeExec", {
+    //   initProcessEnabled: true,
+    // }),
     environment: {
-      DB_ENDPOINT: stack.db.instanceEndpoint.socketAddress,
+      DB_ENDPOINT: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
+      DATABASE_URL: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
+      PONDER_INSTANCE_COMMAND: "start",
+      RPC_URL: stack.rpcUrl,
+      GITHUB_USERNAME: stack.githubName,
+      GITHUB_TOKEN: stack.githubToken,
+      GITHUB_URL: stack.githubUrl,
+      CHAIN_ID: stack.chainId,
     },
-    entryPoint: ["sh", "-c"],
-    command: [
-      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && ls && touch .env.local && echo "PONDER_RPC_URL_${stack.chainId}=${stack.rpcUrl}" >> .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && npm run start`,
-    ],
+    portMappings: [{ hostPort: 5432, containerPort: 5432 }],
   });
+
+  container.node.addDependency(...db.node.children);
 
   container.addPortMappings({ containerPort: 80 });
 
@@ -116,7 +142,7 @@ export function createIndexerUsingFargate(stack: InfraStack) {
 
   ecsSG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
 
-  new ecs.FargateService(stack, "IndexerECSService", {
+  const indexerService = new ecs.FargateService(stack, "IndexerECSService", {
     cluster: stack.cluster,
     taskDefinition,
     desiredCount: 1,
@@ -128,4 +154,8 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     enableExecuteCommand: true,
     vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
   });
+
+  indexerService.node.addDependency(...db.node.children);
+
+  db.connections.connections.allowFrom(indexerService, ec2.Port.POSTGRES);
 }

@@ -11,6 +11,8 @@ import { createECSExec } from "./resources/encryption";
 import { createFargate } from "./resources/fargate";
 import { createIndexerUsingFargate } from "./resources/indexer";
 import { ConfigProps } from "./config";
+import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
+import { createDockerImageAsset } from "./resources/dockerImage";
 
 // 1. New type for the props adding in our configuration
 type AwsEnvStackProps = cdk.StackProps & {
@@ -22,8 +24,8 @@ export default class PonderStack extends cdk.Stack {
   alb: ApplicationLoadBalancer;
   albSg: SecurityGroup;
   cdn: Distribution;
-  kmsKey: cdk.aws_kms.Key;
-  execBucket: cdk.aws_s3.Bucket;
+  // kmsKey: cdk.aws_kms.Key;
+  // execBucket: cdk.aws_s3.Bucket;
   cluster: cdk.aws_ecs.Cluster;
   githubUrl: string;
   userId: string;
@@ -31,6 +33,8 @@ export default class PonderStack extends cdk.Stack {
   db: cdk.aws_rds.DatabaseInstance;
   chainId: string;
   rpcUrl: string;
+  githubName: string;
+  dockerImageAsset: DockerImageAsset;
 
   constructor(scope: Construct, id: string, props?: AwsEnvStackProps) {
     super(scope, id, props);
@@ -77,7 +81,16 @@ export default class PonderStack extends cdk.Stack {
           default: "",
         }).valueAsString;
 
-    createECSExec(this);
+    this.githubName = config
+      ? process.env.GITHUB_NAME!
+      : new cdk.CfnParameter(this, "githubName", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        }).valueAsString;
+
+    // createECSExec(this);
+    createDockerImageAsset(this);
     createVPC(this);
     // createALB(this);
     createCluster(this);

@@ -7,6 +7,8 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import { aws_applicationautoscaling } from "aws-cdk-lib";
 import InfraStack from "../ponderStack";
+import { Dependable } from "constructs";
+import { Repository } from "aws-cdk-lib/aws-ecr";
 
 export function createFargate(stack: InfraStack) {
   const role = new iam.Role(stack, "EcsTaskExecutionRole", {
@@ -30,21 +32,6 @@ export function createFargate(stack: InfraStack) {
         ],
         resources: ["*"],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:PutObject"],
-        resources: [`${stack.execBucket.bucketArn}/*`],
-      }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:GetEncryptionConfiguration"],
-        resources: [stack.execBucket.bucketArn],
-      }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["kms:Decrypt"],
-        resources: [stack.kmsKey.keyArn],
-      }),
     ],
   });
 
@@ -67,22 +54,32 @@ export function createFargate(stack: InfraStack) {
   });
 
   const container = taskDefinition.addContainer("ECSContainer", {
-    image: ecs.ContainerImage.fromRegistry("timbru31/node-alpine-git:latest"),
+    image: ecs.ContainerImage.fromDockerImageAsset(stack.dockerImageAsset),
     logging: ecs.LogDriver.awsLogs({
       streamPrefix: "ponderInstanceLogs",
       logGroup: containerLogGroup,
     }),
-    linuxParameters: new ecs.LinuxParameters(stack, "NodeExec", {
-      initProcessEnabled: true,
-    }),
+    // ponderstack-indexeddatadb0acd9949-rpdrgsuto6ha.cdi0aw40ww0j.us-east-1.rds.amazonaws.com
+    // arn:aws:rds:us-east-1:124355662159:db:ponderstack-indexeddatadb0acd9949-rpdrgsuto6ha
+    // linuxParameters: new ecs.LinuxParameters(stack, "NodeExec", {
+    //   initProcessEnabled: true,
+    // }),
     environment: {
-      DB_ENDPOINT: stack.db.instanceEndpoint.socketAddress,
+      DB_ENDPOINT: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
+      DATABASE_URL: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
+      PONDER_INSTANCE_COMMAND: "serve",
+      RPC_URL: stack.rpcUrl,
+      GITHUB_USERNAME: stack.githubName,
+      GITHUB_TOKEN: stack.githubToken,
+      GITHUB_URL: stack.githubUrl,
+      CHAIN_ID: stack.chainId,
     },
-    entryPoint: ["sh", "-c"],
-    command: [
-      `git clone https://oauth2:${stack.githubToken}@github.com/${stack.githubUrl} ponderInstance && cd ponderInstance && ls && touch .env.local && echo "PONDER_RPC_URL_${stack.chainId}=${stack.rpcUrl}" >> .env.local && echo "DATABASE_URL=${stack.db.instanceEndpoint.socketAddress}" >> .env.local && npm i && npm run serve`,
+    portMappings: [
+      { hostPort: 5432, containerPort: 5432 },
+      { hostPort: 42069, containerPort: 42069 },
     ],
   });
+  container.node.addDependency(...stack.db.node.children);
 
   container.addPortMappings({ containerPort: 80 });
 
@@ -133,9 +130,13 @@ export function createFargate(stack: InfraStack) {
       }
     );
 
+  stack.db.connections.allowFrom(service.service, ec2.Port.POSTGRES);
+
   stack.alb = service.loadBalancer;
 
   stack.alb.addSecurityGroup(albSg);
+
+  service.service.node.addDependency(...stack.db.node.children);
 
   const scaling = service.service.autoScaleTaskCount({
     maxCapacity: 6,
@@ -177,53 +178,4 @@ export function createFargate(stack: InfraStack) {
     adjustmentType:
       aws_applicationautoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
   });
-
-  // const targetGroup = new elbv2.ApplicationTargetGroup(stack, "TargetGroup", {
-  //   targets: [service.service],
-  //   protocol: elbv2.ApplicationProtocol.HTTP,
-  //   vpc: stack.vpc,
-  //   port: 80,
-  //   deregistrationDelay: cdk.Duration.seconds(30),
-  //   healthCheck: {
-  //     path: "/health",
-  //     healthyThresholdCount: 2,
-  //     unhealthyThresholdCount: 3,
-  //     interval: cdk.Duration.seconds(10),
-  //     timeout: cdk.Duration.seconds(5),
-  //     healthyHttpCodes: "200",
-  //   },
-  // });
-
-  // service.listener.addTargets("reeee343", {
-  //   port: 80,
-  //   healthCheck: {
-  //     path: "/health",
-  //     healthyThresholdCount: 2,
-  //     unhealthyThresholdCount: 3,
-  //     interval: cdk.Duration.seconds(10),
-  //     timeout: cdk.Duration.seconds(5),
-  //     healthyHttpCodes: "200",
-  //   },
-  //   targets: [service.service],
-  // });
-
-  // targetGroup.node.addDependency(service.loadBalancer.listeners[0]);
-  // service.service.node.addDependency(service.loadBalancer);
-
-  // service.listener.addTargetGroups("target-group", {
-  //   targetGroups: [targetGroup],
-  // });
-
-  // targetGroup.node.addDependency(service.loadBalancer);
-  // service.service.node.addDependency(service.loadBalancer);
-  // service.service.node.addDependency(service.loadBalancer.listeners[0]);
-  // // const httpslistener = stack.alb.addListener("HttpsListener", {
-  // //   port: 80,
-  // //   open: true,
-  // //   // certificates: [anCert],
-  // // });
-
-  // service.listener.addAction("HttpsDefaultAction", {
-  //   action: elbv2.ListenerAction.forward([targetGroup]),
-  // });
 }

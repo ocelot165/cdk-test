@@ -14,9 +14,9 @@ const stack = new InfraStack(app, "PonderStack", {
   config: config.PONDER_STACK_CONTEXT === "USER" ? config : undefined,
 });
 
-execSync(
-  `cp -f ./cdk.out/${stack.templateFile} ./resources/dynamoTriggerLambda`
-);
+// execSync(
+//   `cp -f ./cdk.out/${stack.templateFile} ./resources/dynamoTriggerLambda`
+// );
 
 new MaintainServiceStack(app, "MaintainServiceStack", {
   env: { region: "us-east-1" },

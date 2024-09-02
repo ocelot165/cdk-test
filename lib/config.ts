@@ -12,6 +12,7 @@ export type ConfigProps = {
   CHAIN_ID?: string;
   RPC_URL?: string;
   PONDER_STACK_CONTEXT?: string;
+  GITHUB_NAME?: string;
 };
 
 // 3. Define a function to retrieve our env variables
@@ -22,4 +23,5 @@ export const getConfig = (): ConfigProps => ({
   CHAIN_ID: process.env.CHAIN_ID,
   RPC_URL: process.env.RPC_URL,
   PONDER_STACK_CONTEXT: process.env.PONDER_STACK_CONTEXT,
+  GITHUB_NAME: process.env.GITHUB_USERNAME,
 });

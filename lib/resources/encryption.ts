@@ -15,8 +15,8 @@ export function createECSExec(stack: InfraStack) {
     blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
   });
 
-  stack.kmsKey = kmsKey;
-  stack.execBucket = s3Bucket;
+  // stack.kmsKey = kmsKey;
+  // stack.execBucket = s3Bucket;
 
   const execDep = {
     kmsKey: kmsKey,

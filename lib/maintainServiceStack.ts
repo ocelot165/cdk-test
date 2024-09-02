@@ -7,6 +7,7 @@ import path from "path";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
 
 export class MaintainServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
