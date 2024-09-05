@@ -9,8 +9,6 @@ import {
 } from "@aws-sdk/client-cloudformation";
 import PonderStack from "./in/PonderStack.template.json";
 
-AWS.config.update({ region: "us-east-1" });
-
 const client = new CloudFormationClient({});
 
 export const handler: Handler = async (event: DynamoDBStreamEvent) => {

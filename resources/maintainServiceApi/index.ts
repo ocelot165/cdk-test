@@ -12,7 +12,7 @@ const client = new DynamoDBClient({});
 
 const dynamo = DynamoDBDocumentClient.from(client);
 
-const tableName = "serviceTable";
+const tableName = "serviceTabless";
 
 const app = express();
 app.use(express.json());

@@ -1,0 +1,155 @@
+{
+  "availability-zones:account=124355662159:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "vpc-provider:account=124355662159:filter.tag:Name=MaintainServiceStack/ControlPlaneVpc:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-0d98409b219d56c69",
+    "vpcCidrBlock": "10.30.0.0/16",
+    "ownerAccountId": "124355662159",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "PrivateIsolated",
+        "type": "Isolated",
+        "subnets": [
+          {
+            "subnetId": "subnet-0d6279ad73e6d3182",
+            "cidr": "10.30.4.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-0d11b80defbb50047"
+          },
+          {
+            "subnetId": "subnet-0dc4b5bfc08205cd4",
+            "cidr": "10.30.5.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-080e8d580b2075558"
+          }
+        ]
+      },
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-03fb7df914ad80b35",
+            "cidr": "10.30.0.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-000051d23793c2319"
+          },
+          {
+            "subnetId": "subnet-068596667cc1222a6",
+            "cidr": "10.30.1.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0868c9778e51bb9be"
+          }
+        ]
+      },
+      {
+        "name": "Private",
+        "type": "Private",
+        "subnets": [
+          {
+            "subnetId": "subnet-06d3749721d3851b2",
+            "cidr": "10.30.2.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-0ca4a48fc7d45747e"
+          },
+          {
+            "subnetId": "subnet-09bfea8ff693b95c8",
+            "cidr": "10.30.3.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-080ea68b730240bfc"
+          }
+        ]
+      }
+    ]
+  },
+  "load-balancer:account=124355662159:loadBalancerTags.0.key=Context:loadBalancerTags.0.value=ControlPlan:loadBalancerType=application:region=us-east-1": {
+    "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:124355662159:loadbalancer/app/Mainta-AppLo-KW20K7vVH8n7/4b1f40b1a245d174",
+    "loadBalancerCanonicalHostedZoneId": "Z35SXDOTRQ7X7K",
+    "loadBalancerDnsName": "Mainta-AppLo-KW20K7vVH8n7-1610308113.us-east-1.elb.amazonaws.com",
+    "vpcId": "vpc-092cc98aa87852e2d",
+    "securityGroupIds": [
+      "sg-03fe2551b17fbe061"
+    ],
+    "ipAddressType": "ipv4"
+  },
+  "vpc-provider:account=124355662159:filter.vpc-id=vpc-092cc98aa87852e2d:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-092cc98aa87852e2d",
+    "vpcCidrBlock": "10.30.0.0/16",
+    "ownerAccountId": "124355662159",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Private",
+        "type": "Private",
+        "subnets": [
+          {
+            "subnetId": "subnet-0e0f797bf3829dffe",
+            "cidr": "10.30.2.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-00578f5a25a00fec2"
+          },
+          {
+            "subnetId": "subnet-01c1f35831d79b53a",
+            "cidr": "10.30.3.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0345a1e02e71ee287"
+          }
+        ]
+      },
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0414cfa1c18fb5426",
+            "cidr": "10.30.0.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-077c79b1004f2d34f"
+          },
+          {
+            "subnetId": "subnet-029af68d206ee99a6",
+            "cidr": "10.30.1.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0dffef713163bf7f7"
+          }
+        ]
+      },
+      {
+        "name": "PrivateIsolated",
+        "type": "Isolated",
+        "subnets": [
+          {
+            "subnetId": "subnet-076eca0b1c31db680",
+            "cidr": "10.30.4.0/24",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-042a79781fc313154"
+          },
+          {
+            "subnetId": "subnet-09c2d86575e57fe4e",
+            "cidr": "10.30.5.0/24",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-0926939cec5a46e48"
+          }
+        ]
+      }
+    ]
+  },
+  "security-group:account=124355662159:region=us-east-1:securityGroupId=sg-03fe2551b17fbe061": {
+    "securityGroupId": "sg-03fe2551b17fbe061",
+    "allowAllOutbound": false
+  },
+  "load-balancer-listener:account=124355662159:loadBalancerTags.0.key=Context:loadBalancerTags.0.value=ControlPlan:loadBalancerType=application:region=us-east-1": {
+    "listenerArn": "arn:aws:elasticloadbalancing:us-east-1:124355662159:listener/app/Mainta-AppLo-KW20K7vVH8n7/4b1f40b1a245d174/a7d0754c4ab2ea12",
+    "listenerPort": 80,
+    "securityGroupIds": [
+      "sg-03fe2551b17fbe061"
+    ]
+  }
+}

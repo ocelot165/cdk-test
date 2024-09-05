@@ -1,14 +1,11 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import { aws_applicationautoscaling } from "aws-cdk-lib";
 import InfraStack from "../ponderStack";
-import { Dependable } from "constructs";
-import { Repository } from "aws-cdk-lib/aws-ecr";
 
 export function createFargate(stack: InfraStack) {
   const role = new iam.Role(stack, "EcsTaskExecutionRole", {
@@ -53,17 +50,14 @@ export function createFargate(stack: InfraStack) {
     removalPolicy: cdk.RemovalPolicy.DESTROY,
   });
 
+  const splitArn = stack.stackId.split("/");
+
   const container = taskDefinition.addContainer("ECSContainer", {
     image: ecs.ContainerImage.fromDockerImageAsset(stack.dockerImageAsset),
     logging: ecs.LogDriver.awsLogs({
       streamPrefix: "ponderInstanceLogs",
       logGroup: containerLogGroup,
     }),
-    // ponderstack-indexeddatadb0acd9949-rpdrgsuto6ha.cdi0aw40ww0j.us-east-1.rds.amazonaws.com
-    // arn:aws:rds:us-east-1:124355662159:db:ponderstack-indexeddatadb0acd9949-rpdrgsuto6ha
-    // linuxParameters: new ecs.LinuxParameters(stack, "NodeExec", {
-    //   initProcessEnabled: true,
-    // }),
     environment: {
       DB_ENDPOINT: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
       DATABASE_URL: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
@@ -73,6 +67,10 @@ export function createFargate(stack: InfraStack) {
       GITHUB_TOKEN: stack.githubToken,
       GITHUB_URL: stack.githubUrl,
       CHAIN_ID: stack.chainId,
+      SCHEMA: `${stack.dbPrefix}-schema`,
+      PUBLIC_SCHEMA: `${stack.dbPrefix}-publicSchema`,
+      STACK_NAME: stack.stackName,
+      BASE_PATH: `/${stack.stackName}`,
     },
     portMappings: [
       { hostPort: 5432, containerPort: 5432 },
@@ -82,6 +80,8 @@ export function createFargate(stack: InfraStack) {
   container.node.addDependency(...stack.db.node.children);
 
   container.addPortMappings({ containerPort: 80 });
+
+  stack.container = container;
 
   const albSg = new ec2.SecurityGroup(stack, "SecurityGroupAlb", {
     vpc: stack.vpc,
@@ -104,41 +104,21 @@ export function createFargate(stack: InfraStack) {
     ec2.Port.tcp(80)
   );
 
-  const service =
-    new cdk.aws_ecs_patterns.ApplicationLoadBalancedFargateService(
-      stack,
-      "ECSService",
-      {
-        cluster: stack.cluster,
-        taskDefinition,
-        desiredCount: 1,
-        minHealthyPercent: 100,
-        maxHealthyPercent: 200,
-        assignPublicIp: true,
-        healthCheckGracePeriod: cdk.Duration.seconds(60),
-        enableExecuteCommand: true,
-        taskSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
-        securityGroups: [ecsSG],
-        protocol: elbv2.ApplicationProtocol.HTTP,
-        // healthCheck: {
-        //   healthyThresholdCount: 2,
-        //   unhealthyThresholdCount: 3,
-        //   interval: cdk.Duration.seconds(10),
-        //   timeout: cdk.Duration.seconds(5),
-        //   healthyHttpCodes: "200",
-        // },
-      }
-    );
+  const graphqlService = new ecs.FargateService(stack, "GraphQLService", {
+    cluster: stack.cluster,
+    taskDefinition,
+    desiredCount: 1,
+    securityGroups: [ecsSG],
+    minHealthyPercent: 100,
+    maxHealthyPercent: 200,
+    assignPublicIp: true,
+    enableExecuteCommand: true,
+    vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
+  });
 
-  stack.db.connections.allowFrom(service.service, ec2.Port.POSTGRES);
+  stack.fargateService = graphqlService;
 
-  stack.alb = service.loadBalancer;
-
-  stack.alb.addSecurityGroup(albSg);
-
-  service.service.node.addDependency(...stack.db.node.children);
-
-  const scaling = service.service.autoScaleTaskCount({
+  const scaling = graphqlService.autoScaleTaskCount({
     maxCapacity: 6,
     minCapacity: 1,
   });
@@ -147,7 +127,7 @@ export function createFargate(stack: InfraStack) {
     period: cdk.Duration.minutes(1),
   };
 
-  const scaleDownCpuUtilization = service.service.metricCpuUtilization(
+  const scaleDownCpuUtilization = graphqlService.metricCpuUtilization(
     mathExpressionOptions
   );
 
@@ -164,7 +144,7 @@ export function createFargate(stack: InfraStack) {
       aws_applicationautoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
   });
 
-  const scaleUpCpuUtilization = service.service.metricCpuUtilization(
+  const scaleUpCpuUtilization = graphqlService.metricCpuUtilization(
     mathExpressionOptions
   );
 

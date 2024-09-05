@@ -5,13 +5,31 @@ import { DynamoDBStreamsToLambda } from "@aws-solutions-constructs/aws-dynamodbs
 import { Construct } from "constructs";
 import path from "path";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
-import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
+import {
+  ApplicationListener,
+  ApplicationLoadBalancer,
+  ListenerAction,
+} from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { Port, Vpc } from "aws-cdk-lib/aws-ec2";
+import { createVPC } from "./resources/vpc";
+import {
+  Credentials,
+  DatabaseInstance,
+  DatabaseInstanceEngine,
+  PostgresEngineVersion,
+} from "aws-cdk-lib/aws-rds";
 
-export class MaintainServiceStack extends cdk.Stack {
+export default class MaintainServiceStack extends cdk.Stack {
+  vpc: Vpc;
+  alb: ApplicationLoadBalancer;
+  albListener: ApplicationListener;
+  db: DatabaseInstance;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    this.vpc = createVPC(this, "ControlPlane", "10.0.0.0/16");
 
     const userFacingLambda = new NodejsFunction(this, "UserFacingLambda", {
       entry: path.join(
@@ -30,6 +48,7 @@ export class MaintainServiceStack extends cdk.Stack {
           "package-lock.json"
         ),
         runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
+        vpc: this.vpc,
       },
     });
 
@@ -39,6 +58,7 @@ export class MaintainServiceStack extends cdk.Stack {
       {
         existingLambdaObj: userFacingLambda,
         apiGatewayProps: {
+          vpc: this.vpc,
           proxy: false,
         },
       }
@@ -76,13 +96,14 @@ export class MaintainServiceStack extends cdk.Stack {
         existingLambdaObj: userFacingLambda,
         dynamoTableProps: {
           deletionProtection: false,
-          tableName: "serviceTable",
+          tableName: "serviceTabless",
           partitionKey: {
             name: "id",
             type: cdk.aws_dynamodb.AttributeType.STRING,
           },
           stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
         },
+        existingVpc: this.vpc,
       }
     );
 
@@ -106,6 +127,7 @@ export class MaintainServiceStack extends cdk.Stack {
             "package-lock.json"
           ),
           runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
+          vpc: this.vpc,
         },
       }
     );
@@ -159,5 +181,62 @@ export class MaintainServiceStack extends cdk.Stack {
     const roleArn = role.roleArn;
 
     dynamoTriggerLambda.addEnvironment("CFM_ROLE_ARN", roleArn);
+
+    const alb = new ApplicationLoadBalancer(this, "AppLoadBalancer", {
+      vpc: this.vpc,
+      internetFacing: true,
+    });
+
+    this.alb = alb;
+
+    cdk.Tags.of(alb).add("Context", "ControlPlan");
+
+    const listener = alb.addListener("InboundHttpListener", {
+      port: 80,
+      open: true,
+      defaultAction: ListenerAction.fixedResponse(404, {
+        contentType: "text/plain",
+        messageBody: "Cannot route your request; no matching project found.",
+      }),
+    });
+
+    this.albListener = listener;
+
+    cdk.Tags.of(listener).add("Context", "ControlPlan");
+
+    const db = new DatabaseInstance(this, "IndexedDataDb", {
+      engine: DatabaseInstanceEngine.postgres({
+        version: PostgresEngineVersion.VER_11,
+      }),
+      vpc: this.vpc,
+      vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED },
+      deletionProtection: false,
+      multiAz: false,
+      publiclyAccessible: false,
+      instanceType: new cdk.aws_ec2.InstanceType("t3.micro"),
+      backupRetention: cdk.Duration.days(0),
+      monitoringInterval: cdk.Duration.days(0),
+      port: 5432,
+      databaseName: "ponderDb",
+      credentials: Credentials.fromPassword(
+        "ponderUser",
+        cdk.SecretValue.unsafePlainText("ponderPass")
+      ),
+      parameters: {
+        "rds.force_ssl": "0",
+      },
+    });
+
+    db.connections.allowFromAnyIpv4(
+      Port.allTraffic(),
+      "Open port for connection"
+    );
+
+    this.db = db;
+
+    new cdk.aws_ssm.StringParameter(this, "listenerRulePriorityput", {
+      stringValue: "1",
+      parameterName: "listenerRulePriority",
+    });
   }
 }

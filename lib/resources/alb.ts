@@ -21,16 +21,6 @@ export function createALB(stack: InfraStack) {
     vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
   });
 
-  //   httplistener.addAction("HttpDefaultAction", {
-  //     action: elbv2.ListenerAction.redirect({
-  //       protocol: "HTTPS",
-  //       host: "#{host}",
-  //       path: "/#{path}",
-  //       query: "#{query}",
-  //       port: "80",
-  //     }),
-  //   });
-
   stack.alb = alb;
   stack.albSg = albSg;
 
