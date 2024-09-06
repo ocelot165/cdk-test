@@ -1,4 +1,3 @@
-import * as AWS from "aws-sdk";
 import { DynamoDBRecord, DynamoDBStreamEvent, Handler } from "aws-lambda";
 import {
   CloudFormationClient,

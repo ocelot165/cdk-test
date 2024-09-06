@@ -17,7 +17,6 @@ import { DatabaseInstance } from "aws-cdk-lib/aws-rds";
 import { randomUUID } from "crypto";
 import { createAlbListenerRule } from "./resources/albListenerRule";
 
-// 1. New type for the props adding in our configuration
 type AwsEnvStackProps = cdk.StackProps & {
   config?: Readonly<ConfigProps>;
   stackIndex: number;

@@ -18,9 +18,9 @@ const stack = new InfraStack(app, "PonderStack", {
   env: { region: process.env.REGION!, account: process.env.ACCOUNT! },
   config: config.PONDER_STACK_CONTEXT === "USER" ? config : undefined,
   maintainStack,
-  stackIndex: 14,
+  stackIndex: Number(config.STACK_INDEX || 0),
 });
 
 // execSync(
-//   `cp -f ./cdk.out/${stack.templateFile} ./resources/dynamoTriggerLambda`
+//   `cp -f ./cdk.out/${stack.templateFile} ./resources/dynamoTriggerLambda/in`
 // );
