@@ -7,15 +7,13 @@ import {
   DeleteStackCommandInput,
 } from "@aws-sdk/client-cloudformation";
 import PonderStack from "./in/PonderStack.template.json";
+import { deserializeData } from "../../utils";
 
 const client = new CloudFormationClient({});
 
 export const handler: Handler = async (event: DynamoDBStreamEvent) => {
   for (const message of event.Records) {
     try {
-      console.log(message.dynamodb?.NewImage);
-      console.log(message.dynamodb?.Keys);
-      console.log(message.eventName);
       const event = message.eventName;
       if (event === "INSERT") {
         await createStackAsync(message);
@@ -33,27 +31,16 @@ async function createStackAsync(message: DynamoDBRecord) {
   try {
     if (!message.dynamodb?.NewImage)
       throw new Error("No Data exists on record");
-    console.log(message.dynamodb?.NewImage);
-    const id: string = message.dynamodb?.NewImage["id"].S as string;
-    const userId: string = message.dynamodb?.NewImage["userId"].S as string;
-    const githubUrl: string = message.dynamodb?.NewImage["githubUrl"]
-      .S as string;
-    const versionSlug: string = message.dynamodb?.NewImage["versionSlug"]
-      .S as string;
-    const githubToken: string = message.dynamodb?.NewImage["githubToken"]
-      .S as string;
-    const rpcUrl: string = message.dynamodb?.NewImage["rpcUrl"].S as string;
-    const chainId: string = message.dynamodb?.NewImage["chainId"].S as string;
-
-    const body = {
-      userId,
-      githubUrl,
-      versionSlug,
-      githubToken,
-      rpcUrl,
-      chainId,
-    };
-    const stackName = id;
+    const body = deserializeData(message.dynamodb?.NewImage, [
+      "id",
+      "userId",
+      "githubUrl",
+      "versionSlug",
+      "githubToken",
+      "rpcUrl",
+      "chainId",
+    ]);
+    const stackName = body.id;
     const input: CreateStackCommandInput = {
       StackName: stackName,
       TemplateBody: JSON.stringify(PonderStack),
@@ -112,15 +99,11 @@ async function createStackAsync(message: DynamoDBRecord) {
 async function deleteStackAsync(message: DynamoDBRecord) {
   try {
     if (!message.dynamodb?.Keys) throw new Error("No Data exists on record");
-    const userId: string = message.dynamodb.Keys["userId"].S as string;
-    const githubUrl: string = message.dynamodb.Keys["githubUrl"].S as string;
-    const versionSlug: string = message.dynamodb.Keys["versionSlug"]
-      .S as string;
-    const body = {
-      userId,
-      githubUrl,
-      versionSlug,
-    };
+    const body = deserializeData(message.dynamodb.Keys, [
+      "userId",
+      "githubUrl",
+      "versionSlug",
+    ]);
     const stackName = `${body.userId}-${body.githubUrl}-${body.versionSlug}`;
     const input: DeleteStackCommandInput = {
       StackName: stackName,
