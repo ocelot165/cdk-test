@@ -96,7 +96,7 @@ export default class MaintainServiceStack extends cdk.Stack {
         existingLambdaObj: userFacingLambda,
         dynamoTableProps: {
           deletionProtection: false,
-          tableName: "serviceTabless",
+          tableName: "serviceTable",
           partitionKey: {
             name: "id",
             type: cdk.aws_dynamodb.AttributeType.STRING,
