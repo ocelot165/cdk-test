@@ -3,7 +3,6 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import InfraStack from "../lib/ponderStack";
 import MaintainServiceStack from "../lib/maintainServiceStack";
-import { execSync } from "child_process";
 import { getConfig } from "../lib/config";
 
 const config = getConfig();
@@ -20,7 +19,3 @@ const stack = new InfraStack(app, "PonderStack", {
   maintainStack,
   stackIndex: Number(config.STACK_INDEX || 0),
 });
-
-// execSync(
-//   `cp -f ./cdk.out/${stack.templateFile} ./resources/dynamoTriggerLambda/in`
-// );
