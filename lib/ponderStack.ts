@@ -4,10 +4,6 @@ import { SecurityGroup, Vpc } from "aws-cdk-lib/aws-ec2";
 import {
   ApplicationListener,
   ApplicationLoadBalancer,
-  ApplicationProtocol,
-  ApplicationTargetGroup,
-  ListenerAction,
-  ListenerCondition,
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { Construct } from "constructs";
 import { createCluster } from "./resources/ecsCluster";
@@ -19,6 +15,7 @@ import { createDockerImageAsset } from "./resources/dockerImage";
 import { ContainerDefinition, FargateService } from "aws-cdk-lib/aws-ecs";
 import { DatabaseInstance } from "aws-cdk-lib/aws-rds";
 import { randomUUID } from "crypto";
+import { createAlbListenerRule } from "./resources/albListenerRule";
 
 // 1. New type for the props adding in our configuration
 type AwsEnvStackProps = cdk.StackProps & {
@@ -106,43 +103,16 @@ export default class PonderStack extends cdk.Stack {
         }).valueAsString;
 
     this.db = props?.maintainStack.db as DatabaseInstance;
-    createDockerImageAsset(this);
     this.vpc = props?.maintainStack.vpc as Vpc;
+
+    createDockerImageAsset(this);
     createCluster(this);
     createIndexerUsingFargate(this);
     createFargate(this);
-
-    const albListener = props?.maintainStack.albListener as ApplicationListener;
-
-    const targetGroup = new ApplicationTargetGroup(this, "TargetGroup", {
-      vpc: this.vpc,
-      port: 42069,
-      protocol: ApplicationProtocol.HTTP,
-      targets: [
-        this.fargateService.loadBalancerTarget({
-          containerName: this.container.containerName,
-          containerPort: 42069,
-        }),
-      ],
-      healthCheck: {
-        interval: cdk.Duration.seconds(10),
-        path: `/${this.stackName}/readiness`,
-        timeout: cdk.Duration.seconds(5),
-        port: "42069",
-        unhealthyThresholdCount: 5,
-      },
-      deregistrationDelay: cdk.Duration.seconds(10),
-    });
-
-    new cdk.aws_elasticloadbalancingv2.ApplicationListenerRule(
+    createAlbListenerRule(
       this,
-      `ListenerRule-${randomUUID()}`,
-      {
-        conditions: [ListenerCondition.pathPatterns([`/${this.stackName}/*`])],
-        action: ListenerAction.forward([targetGroup]),
-        priority: props?.stackIndex as number,
-        listener: albListener,
-      }
+      props?.maintainStack.albListener as ApplicationListener,
+      props?.stackIndex as number
     );
   }
 }
