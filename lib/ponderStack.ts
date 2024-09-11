@@ -16,6 +16,12 @@ import { ContainerDefinition, FargateService } from "aws-cdk-lib/aws-ecs";
 import { DatabaseInstance } from "aws-cdk-lib/aws-rds";
 import { randomUUID } from "crypto";
 import { createAlbListenerRule } from "./resources/albListenerRule";
+import { Artifact, Pipeline } from "aws-cdk-lib/aws-codepipeline";
+import {
+  GitHubSourceAction,
+  S3DeployAction,
+} from "aws-cdk-lib/aws-codepipeline-actions";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 
 type AwsEnvStackProps = cdk.StackProps & {
   config?: Readonly<ConfigProps>;
@@ -25,6 +31,7 @@ type AwsEnvStackProps = cdk.StackProps & {
     albListener: ApplicationListener;
     alb: ApplicationLoadBalancer;
     db: DatabaseInstance;
+    s3Bucket: Bucket;
   };
 };
 
@@ -113,5 +120,36 @@ export default class PonderStack extends cdk.Stack {
       props?.maintainStack.albListener as ApplicationListener,
       props?.stackIndex as number
     );
+    const pipeline = new Pipeline(this, "MyPipeline");
+    const sourceOutput = new Artifact();
+    const sourceAction = new GitHubSourceAction({
+      actionName: "GitHub_Source",
+      owner: this.githubName,
+      repo: this.githubUrl,
+      oauthToken: cdk.SecretValue.cfnParameter(
+        new cdk.CfnParameter(this, "githubToken", {
+          description: "Version Slug",
+          type: "String",
+          default: "",
+        })
+      ),
+      output: sourceOutput,
+      branch: "main",
+    });
+    pipeline.addStage({
+      stageName: "Source",
+      actions: [sourceAction],
+    });
+    pipeline.addStage({
+      stageName: "Deploy",
+      actions: [
+        new S3DeployAction({
+          actionName: "DeployAction",
+          objectKey: `${this.stackName}-repo`,
+          input: sourceOutput,
+          bucket: props?.maintainStack.s3Bucket as Bucket,
+        }),
+      ],
+    });
   }
 }

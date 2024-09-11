@@ -1,6 +1,7 @@
 import { LambdaToDynamoDB } from "@aws-solutions-constructs/aws-lambda-dynamodb";
 import MaintainServiceStack from "../maintainServiceStack";
 import * as cdk from "aws-cdk-lib";
+import { SubnetType } from "aws-cdk-lib/aws-ec2";
 
 export function createDynamoTable(stack: MaintainServiceStack) {
   const { dynamoTable } = new LambdaToDynamoDB(
@@ -18,6 +19,11 @@ export function createDynamoTable(stack: MaintainServiceStack) {
         stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
       },
       existingVpc: stack.vpc,
+      vpcProps: {
+        subnetConfiguration: [
+          { subnetType: SubnetType.PRIVATE_ISOLATED, name: "PrivateIsolated" },
+        ],
+      },
     }
   );
 

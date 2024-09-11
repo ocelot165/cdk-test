@@ -16,6 +16,7 @@ import { createDynamoTable } from "./resources/dynamo";
 import { createDynamoTriggerLambda } from "./resources/dynamoTriggerLambda";
 import { createALB } from "./resources/alb";
 import { createDb } from "./resources/db";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 
 export default class MaintainServiceStack extends cdk.Stack {
   vpc: Vpc;
@@ -26,6 +27,7 @@ export default class MaintainServiceStack extends cdk.Stack {
   apiGateway: RestApi;
   dynamoTable: Table;
   dynamoTriggerLambda: NodejsFunction;
+  s3Bucket: Bucket;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -37,5 +39,10 @@ export default class MaintainServiceStack extends cdk.Stack {
     createDynamoTriggerLambda(this);
     createALB(this);
     createDb(this);
+
+    this.s3Bucket = new Bucket(this, "GithubRepoBucket", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      bucketName: "githubRepoBucket",
+    });
   }
 }

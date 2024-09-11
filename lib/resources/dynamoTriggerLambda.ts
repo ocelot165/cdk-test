@@ -4,6 +4,7 @@ import path from "path";
 import * as cdk from "aws-cdk-lib";
 import { DynamoDBStreamsToLambda } from "@aws-solutions-constructs/aws-dynamodbstreams-lambda";
 import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import { SubnetType } from "aws-cdk-lib/aws-ec2";
 
 export function createDynamoTriggerLambda(stack: MaintainServiceStack) {
   const dynamoTriggerLambda = new NodejsFunction(stack, "DynamoTriggerLambda", {
@@ -25,6 +26,11 @@ export function createDynamoTriggerLambda(stack: MaintainServiceStack) {
       ),
       runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
       vpc: stack.vpc,
+      vpcProps: {
+        subnetConfiguration: [
+          { subnetType: SubnetType.PRIVATE_ISOLATED, name: "PrivateIsolated" },
+        ],
+      },
     },
   });
 
