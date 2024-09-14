@@ -4,7 +4,12 @@ import {
   GetItemCommand,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { DeleteCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DeleteCommand,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { uuid } from "uuidv4";
 //@ts-ignore
 import { config } from "./config.ts";
@@ -18,6 +23,23 @@ const client = new DynamoDBClient(
 );
 
 type DynamodbData = Record<string, AttributeValue>;
+
+async function getIncrementedCounter() {
+  const updateCommand = new UpdateCommand({
+    TableName: "serviceTable",
+    Key: {
+      id: "orderCounterKey",
+    },
+    UpdateExpression: "ADD #cnt :val",
+    ExpressionAttributeNames: { "#cnt": "count" },
+    ExpressionAttributeValues: { ":val": 1 },
+    ReturnValues: "UPDATED_NEW",
+  });
+
+  const response = await client.send(updateCommand);
+
+  return Number(response.Attributes?.count);
+}
 
 function getDefinedData(attributeValue: AttributeValue) {
   if (attributeValue.S) return attributeValue.S;
@@ -80,6 +102,7 @@ export async function createUser(
 }
 
 export async function createPonderService(body: any) {
+  const incrementedStackId = getIncrementedCounter();
   const id = `e${uuid()}`;
   await client.send(
     new PutCommand({
@@ -93,6 +116,7 @@ export async function createPonderService(body: any) {
         githubToken: body.githubToken,
         chainId: body.chainId,
         rpcUrl: body.rpcUrl,
+        incrementedStackId,
       },
     })
   );

@@ -15,6 +15,10 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     ],
   });
 
+  role.addManagedPolicy(
+    iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
+  );
+
   const ecsExecPolicy = new iam.ManagedPolicy(stack, "IndexerECSExecPolicy", {
     statements: [
       new iam.PolicyStatement({
@@ -67,13 +71,14 @@ export function createIndexerUsingFargate(stack: InfraStack) {
       DATABASE_URL: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
       PONDER_INSTANCE_COMMAND: "start",
       RPC_URL: stack.rpcUrl,
-      GITHUB_USERNAME: stack.githubName,
+      GITHUB_USERNAME: stack.repoOwnerName,
       GITHUB_TOKEN: stack.githubToken,
       GITHUB_URL: stack.githubUrl,
       CHAIN_ID: stack.chainId,
       SCHEMA: `${stack.dbPrefix}-schema`,
       PUBLIC_SCHEMA: `${stack.dbPrefix}-publicSchema`,
       BASE_PATH: `/${stack.stackName}`,
+      STACK_NAME: stack.stackName.toLowerCase(),
     },
     portMappings: [{ hostPort: 5432, containerPort: 5432 }],
   });
@@ -89,7 +94,7 @@ export function createIndexerUsingFargate(stack: InfraStack) {
 
   ecsSG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
 
-  new ecs.FargateService(stack, "IndexerECSService", {
+  const ecsService = new ecs.FargateService(stack, "IndexerECSService", {
     cluster: stack.cluster,
     taskDefinition,
     desiredCount: 1,
@@ -100,4 +105,6 @@ export function createIndexerUsingFargate(stack: InfraStack) {
     enableExecuteCommand: true,
     vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PUBLIC },
   });
+
+  ecsService.node.addDependency(stack.gitPipeline);
 }

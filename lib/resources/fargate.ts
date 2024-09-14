@@ -17,6 +17,10 @@ export function createFargate(stack: InfraStack) {
     ],
   });
 
+  role.addManagedPolicy(
+    iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
+  );
+
   const ecsExecPolicy = new iam.ManagedPolicy(stack, "ECSExecPolicy", {
     statements: [
       new iam.PolicyStatement({
@@ -63,13 +67,13 @@ export function createFargate(stack: InfraStack) {
       DATABASE_URL: `postgresql://ponderUser:ponderPass@${stack.db.dbInstanceEndpointAddress}:${stack.db.dbInstanceEndpointPort}/ponderDb`,
       PONDER_INSTANCE_COMMAND: "serve",
       RPC_URL: stack.rpcUrl,
-      GITHUB_USERNAME: stack.githubName,
+      GITHUB_USERNAME: stack.repoOwnerName,
       GITHUB_TOKEN: stack.githubToken,
       GITHUB_URL: stack.githubUrl,
       CHAIN_ID: stack.chainId,
       SCHEMA: `${stack.dbPrefix}-schema`,
       PUBLIC_SCHEMA: `${stack.dbPrefix}-publicSchema`,
-      STACK_NAME: stack.stackName,
+      STACK_NAME: stack.stackName.toLowerCase(),
       BASE_PATH: `/${stack.stackName}`,
     },
     portMappings: [
@@ -117,6 +121,8 @@ export function createFargate(stack: InfraStack) {
   });
 
   stack.fargateService = graphqlService;
+
+  graphqlService.node.addDependency(stack.gitPipeline);
 
   const scaling = graphqlService.autoScaleTaskCount({
     maxCapacity: 6,

@@ -17,9 +17,10 @@ export function createUserFacingLambda(stack: MaintainServiceStack) {
       depsLockFilePath: path.join(
         __dirname,
         "..",
+        "..",
         "resources",
         "maintainServiceApi",
-        "package-lock.json"
+        "index.ts"
       ),
       runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
       vpc: stack.vpc,

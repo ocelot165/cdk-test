@@ -17,5 +17,8 @@ const stack = new InfraStack(app, "PonderStack", {
   env: { region: process.env.REGION!, account: process.env.ACCOUNT! },
   config: config.PONDER_STACK_CONTEXT === "USER" ? config : undefined,
   maintainStack,
-  stackIndex: Number(config.STACK_INDEX || 0),
+  stackIndex:
+    config.PONDER_STACK_CONTEXT === "USER"
+      ? Number(config.STACK_INDEX || 0)
+      : undefined,
 });

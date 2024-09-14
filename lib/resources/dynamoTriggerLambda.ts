@@ -20,6 +20,7 @@ export function createDynamoTriggerLambda(stack: MaintainServiceStack) {
       depsLockFilePath: path.join(
         __dirname,
         "..",
+        "..",
         "resources",
         "dynamoTriggerLambda",
         "package-lock.json"

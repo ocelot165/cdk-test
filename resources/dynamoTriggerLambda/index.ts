@@ -7,7 +7,7 @@ import {
   DeleteStackCommandInput,
 } from "@aws-sdk/client-cloudformation";
 import PonderStack from "./in/PonderStack.template.json";
-import { deserializeData } from "../../utils";
+import { deserializeData } from "./utils";
 
 const client = new CloudFormationClient({});
 
@@ -73,6 +73,11 @@ async function createStackAsync(message: DynamoDBRecord) {
         {
           ParameterKey: "chainId",
           ParameterValue: body.chainId,
+          UsePreviousValue: false,
+        },
+        {
+          ParameterKey: "githubName",
+          ParameterValue: body.githubToken,
           UsePreviousValue: false,
         },
       ],

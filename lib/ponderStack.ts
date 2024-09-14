@@ -16,16 +16,13 @@ import { ContainerDefinition, FargateService } from "aws-cdk-lib/aws-ecs";
 import { DatabaseInstance } from "aws-cdk-lib/aws-rds";
 import { randomUUID } from "crypto";
 import { createAlbListenerRule } from "./resources/albListenerRule";
-import { Artifact, Pipeline } from "aws-cdk-lib/aws-codepipeline";
-import {
-  GitHubSourceAction,
-  S3DeployAction,
-} from "aws-cdk-lib/aws-codepipeline-actions";
 import { Bucket } from "aws-cdk-lib/aws-s3";
+import { createGitPipeline } from "./resources/gitPipeline";
+import { Pipeline } from "aws-cdk-lib/aws-codepipeline";
 
 type AwsEnvStackProps = cdk.StackProps & {
   config?: Readonly<ConfigProps>;
-  stackIndex: number;
+  stackIndex?: number;
   maintainStack: {
     vpc: Vpc;
     albListener: ApplicationListener;
@@ -47,11 +44,14 @@ export default class PonderStack extends cdk.Stack {
   db: cdk.aws_rds.DatabaseInstance;
   chainId: string;
   rpcUrl: string;
-  githubName: string;
+  repoName: string;
+  repoOwnerName: string;
   dockerImageAsset: DockerImageAsset;
   fargateService: FargateService;
   container: ContainerDefinition;
+  gitPipeline: Pipeline;
   dbPrefix: string;
+  stackIndex: number;
 
   constructor(scope: Construct, id: string, props?: AwsEnvStackProps) {
     super(scope, id, props);
@@ -60,13 +60,18 @@ export default class PonderStack extends cdk.Stack {
 
     this.dbPrefix = randomUUID();
 
-    this.githubUrl = config
+    const githubUrl = config
       ? process.env.GITHUB_URL!
       : new cdk.CfnParameter(this, "githubUrl", {
           description: "Version Slug",
           type: "String",
           default: "",
         }).valueAsString;
+
+    const splitUrl = githubUrl.split("/");
+
+    const repoOwnerName = splitUrl[0];
+    const repoName = splitUrl[1];
 
     this.userId = config
       ? process.env.USER_ID!
@@ -82,6 +87,7 @@ export default class PonderStack extends cdk.Stack {
           description: "Version Slug",
           type: "String",
           default: "",
+          noEcho: true,
         }).valueAsString;
 
     this.chainId = config
@@ -100,17 +106,25 @@ export default class PonderStack extends cdk.Stack {
           default: "",
         }).valueAsString;
 
-    this.githubName = config
-      ? process.env.GITHUB_NAME!
-      : new cdk.CfnParameter(this, "githubName", {
-          description: "Version Slug",
-          type: "String",
-          default: "",
-        }).valueAsString;
+    this.repoName = repoName;
+
+    this.repoOwnerName = repoOwnerName;
+
+    this.stackIndex =
+      typeof props?.stackIndex !== "undefined"
+        ? props?.stackIndex
+        : Number(
+            new cdk.CfnParameter(this, "stackIndex", {
+              description: "Version Slug",
+              type: "String",
+              default: "",
+            }).valueAsString
+          );
 
     this.db = props?.maintainStack.db as DatabaseInstance;
     this.vpc = props?.maintainStack.vpc as Vpc;
 
+    createGitPipeline(this, props?.maintainStack.s3Bucket as Bucket, config);
     createDockerImageAsset(this);
     createCluster(this);
     createIndexerUsingFargate(this);
@@ -118,38 +132,7 @@ export default class PonderStack extends cdk.Stack {
     createAlbListenerRule(
       this,
       props?.maintainStack.albListener as ApplicationListener,
-      props?.stackIndex as number
+      this.stackIndex
     );
-    const pipeline = new Pipeline(this, "MyPipeline");
-    const sourceOutput = new Artifact();
-    const sourceAction = new GitHubSourceAction({
-      actionName: "GitHub_Source",
-      owner: this.githubName,
-      repo: this.githubUrl,
-      oauthToken: cdk.SecretValue.cfnParameter(
-        new cdk.CfnParameter(this, "githubToken", {
-          description: "Version Slug",
-          type: "String",
-          default: "",
-        })
-      ),
-      output: sourceOutput,
-      branch: "main",
-    });
-    pipeline.addStage({
-      stageName: "Source",
-      actions: [sourceAction],
-    });
-    pipeline.addStage({
-      stageName: "Deploy",
-      actions: [
-        new S3DeployAction({
-          actionName: "DeployAction",
-          objectKey: `${this.stackName}-repo`,
-          input: sourceOutput,
-          bucket: props?.maintainStack.s3Bucket as Bucket,
-        }),
-      ],
-    });
   }
 }

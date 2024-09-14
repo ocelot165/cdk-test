@@ -19,11 +19,6 @@ export function createDynamoTable(stack: MaintainServiceStack) {
         stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
       },
       existingVpc: stack.vpc,
-      vpcProps: {
-        subnetConfiguration: [
-          { subnetType: SubnetType.PRIVATE_ISOLATED, name: "PrivateIsolated" },
-        ],
-      },
     }
   );
 
