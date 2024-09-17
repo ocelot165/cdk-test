@@ -13,7 +13,7 @@ const maintainStack = new MaintainServiceStack(app, "MaintainServiceStack", {
   env: { region: process.env.REGION!, account: process.env.ACCOUNT! },
 });
 
-const stack = new InfraStack(app, "PonderStack", {
+new InfraStack(app, "PonderStack", {
   env: { region: process.env.REGION!, account: process.env.ACCOUNT! },
   config: config.PONDER_STACK_CONTEXT === "USER" ? config : undefined,
   maintainStack,

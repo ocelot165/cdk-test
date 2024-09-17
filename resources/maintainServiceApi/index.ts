@@ -25,6 +25,8 @@ import { gitStrategy } from "./github/index.ts";
 import { userRouter } from "./routes/user.ts";
 import { getUser } from "./database";
 import cookieParser from "cookie-parser";
+require("https").globalAgent.options.rejectUnauthorized = false;
+
 dotenv.config();
 
 passport.serializeUser(function (user, done) {
@@ -38,24 +40,18 @@ passport.deserializeUser(function (obj: User, done) {
 
 const cookieExtractor = function (req: any) {
   var token = null;
+  console.log(req.cookies, "cookiesss");
   if (req && req.cookies) {
     token = req.cookies["authJWT"];
   }
   return token;
 };
 
-const client = new DynamoDBClient({});
-
-const dynamo = DynamoDBDocumentClient.from(client);
-
-const tableName = "serviceTable";
-
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
-passport.use(gitStrategy);
 passport.use(
   new JwtStrategy(
     {
@@ -71,6 +67,7 @@ passport.use(
     }
   )
 );
+passport.use(gitStrategy);
 
 passport.serializeUser(function (user, done) {
   done(null, user);
@@ -84,45 +81,6 @@ app.use("/auth", authRouter);
 app.use("/ponder", ponderRouter);
 app.use("/user", userRouter);
 
-app.get("/getPonderServiceStatus", (req, res) => {
-  console.log("in get ponder status");
-  res.status(200).send("in get ponder status");
-});
-
-app.post("/createPonderService", async (req, res) => {
-  console.log("in create ponder service");
-  let requestJSON = req.body;
-  const id = `e${uuid()}`;
-  await dynamo.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: {
-        partitionKey: id,
-        id: id,
-        userId: requestJSON.userId,
-        githubUrl: requestJSON.githubUrl,
-        versionSlug: requestJSON.versionSlug,
-        githubToken: requestJSON.githubToken,
-        chainId: requestJSON.chainId,
-        rpcUrl: requestJSON.rpcUrl,
-      },
-    })
-  );
-  res.status(200).send();
-});
-
-app.post("/deletePonderService", async (req, res) => {
-  console.log("in delete ponder service");
-  let requestJSON = req.body;
-  await dynamo.send(
-    new DeleteCommand({
-      TableName: tableName,
-      Key: { id: requestJSON.id },
-    })
-  );
-  res.status(200).send();
-});
-
 app.use((_: express.Request, res: express.Response) => {
   res.status(404).send();
 });
@@ -132,13 +90,18 @@ app.use((err: any, _: express.Request, res: express.Response) => {
 });
 
 let prodHandlerFn;
+app.listen(3000, function () {
+  console.log("Express server listening on port " + 3000);
+});
 //@ts-ignore
-if (process.env.IS_LOCAL === false) {
-  prodHandlerFn = serverless(app);
-} else {
-  app.listen(3000, function () {
-    console.log("Express server listening on port " + 3000);
-  });
+if (process.env.IS_LOCAL === "false") {
+  const handler = serverless(app);
+  //@ts-ignore
+  prodHandlerFn = async (event, context, callback) => {
+    //@ts-ignore
+    const response = await handler(event, context, callback);
+    return response;
+  };
 }
 
 export const handler = prodHandlerFn;

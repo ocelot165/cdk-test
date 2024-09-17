@@ -11,7 +11,7 @@ import { Port } from "aws-cdk-lib/aws-ec2";
 export function createDb(stack: MaintainServiceStack) {
   const db = new DatabaseInstance(stack, "IndexedDataDb", {
     engine: DatabaseInstanceEngine.postgres({
-      version: PostgresEngineVersion.VER_11,
+      version: PostgresEngineVersion.VER_16,
     }),
     vpc: stack.vpc,
     vpcSubnets: { subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED },

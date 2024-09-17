@@ -5,6 +5,7 @@ aws s3 cp s3://githubrepobucket/ ./ponderInstance --recursive --exclude '*' --in
 cd ponderInstance
 ls
 cd $STACK_NAME-repo
+ls
 touch .env.local
 envsubst < ../../exampleenv.txt > .env.local
 npm i

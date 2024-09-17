@@ -13,31 +13,17 @@ import {
   aws_s3_deployment,
 } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
-import { ConfigProps } from "../config";
 import { CfnGitHubRepository } from "aws-cdk-lib/aws-codestar";
 import { GitHubRepository } from "@aws-cdk/aws-codestar-alpha";
 
-export function createGitPipeline(
-  stack: PonderStack,
-  s3Bucket: Bucket,
-  config?: ConfigProps
-) {
+export function createGitPipeline(stack: PonderStack, s3Bucket: Bucket) {
   const pipeline = new Pipeline(stack, "MyPipeline");
   const sourceOutput = new Artifact();
   const sourceAction = new GitHubSourceAction({
     actionName: "GitHub_Source",
     owner: stack.repoOwnerName,
     repo: stack.repoName,
-    oauthToken: config
-      ? SecretValue.unsafePlainText(config.GITHUB_TOKEN!)
-      : SecretValue.cfnParameter(
-          new CfnParameter(stack, "githubToken", {
-            description: "Version Slug",
-            type: "String",
-            default: "",
-            noEcho: true,
-          })
-        ),
+    oauthToken: SecretValue.unsafePlainText(stack.githubToken),
     output: sourceOutput,
     branch: "main",
     trigger: GitHubTrigger.POLL,
@@ -51,7 +37,7 @@ export function createGitPipeline(
     actions: [
       new S3DeployAction({
         actionName: "DeployAction",
-        objectKey: `${stack.stackName.toLowerCase()}-repo`,
+        objectKey: `${`PonderStack${stack.stackIndex}`.toLowerCase()}-repo`,
         input: sourceOutput,
         bucket: s3Bucket,
         extract: true,

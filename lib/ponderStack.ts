@@ -38,7 +38,6 @@ export default class PonderStack extends cdk.Stack {
   albSg: SecurityGroup;
   cdn: Distribution;
   cluster: cdk.aws_ecs.Cluster;
-  githubUrl: string;
   userId: string;
   githubToken: string;
   db: cdk.aws_rds.DatabaseInstance;
@@ -52,26 +51,33 @@ export default class PonderStack extends cdk.Stack {
   gitPipeline: Pipeline;
   dbPrefix: string;
   stackIndex: number;
+  version: string;
 
   constructor(scope: Construct, id: string, props?: AwsEnvStackProps) {
     super(scope, id, props);
 
-    let config = props?.config || {};
+    let config = props?.config;
 
     this.dbPrefix = randomUUID();
 
-    const githubUrl = config
-      ? process.env.GITHUB_URL!
-      : new cdk.CfnParameter(this, "githubUrl", {
+    const repoOwnerName = new cdk.CfnParameter(this, "repoOwnerName", {
+      description: "Version Slug",
+      type: "String",
+      default: "",
+    }).valueAsString;
+    const repoName = new cdk.CfnParameter(this, "repoName", {
+      description: "Version Slug",
+      type: "String",
+      default: "",
+    }).valueAsString;
+
+    this.version = config
+      ? "-"
+      : new cdk.CfnParameter(this, "version", {
           description: "Version Slug",
           type: "String",
           default: "",
         }).valueAsString;
-
-    const splitUrl = githubUrl.split("/");
-
-    const repoOwnerName = splitUrl[0];
-    const repoName = splitUrl[1];
 
     this.userId = config
       ? process.env.USER_ID!
@@ -110,29 +116,23 @@ export default class PonderStack extends cdk.Stack {
 
     this.repoOwnerName = repoOwnerName;
 
-    this.stackIndex =
-      typeof props?.stackIndex !== "undefined"
-        ? props?.stackIndex
-        : Number(
-            new cdk.CfnParameter(this, "stackIndex", {
-              description: "Version Slug",
-              type: "String",
-              default: "",
-            }).valueAsString
-          );
+    this.stackIndex = new cdk.CfnParameter(this, "stackIndex", {
+      description: "Version Slug",
+      type: "Number",
+      default: 0,
+    }).valueAsNumber;
 
     this.db = props?.maintainStack.db as DatabaseInstance;
     this.vpc = props?.maintainStack.vpc as Vpc;
 
-    createGitPipeline(this, props?.maintainStack.s3Bucket as Bucket, config);
+    createGitPipeline(this, props?.maintainStack.s3Bucket as Bucket);
     createDockerImageAsset(this);
     createCluster(this);
     createIndexerUsingFargate(this);
     createFargate(this);
     createAlbListenerRule(
       this,
-      props?.maintainStack.albListener as ApplicationListener,
-      this.stackIndex
+      props?.maintainStack.albListener as ApplicationListener
     );
   }
 }

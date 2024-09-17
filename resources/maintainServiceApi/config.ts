@@ -10,3 +10,5 @@ export const config = {
   sessionSecret: process.env.SESSION_SECRET!,
   appID: process.env.GITHUB_APP_ID!,
 };
+
+console.log(config);

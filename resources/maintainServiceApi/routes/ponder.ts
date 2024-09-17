@@ -8,8 +8,11 @@ import {
 //@ts-ignore
 import { hasGitAppInstalled, isLoggedIn } from "../middleware/index.ts";
 import { getAllInstalledUserRepositories } from "../github/index.js";
+import passport from "passport";
 
 const router = express.Router();
+
+router.use(passport.authenticate("jwt", { session: false }));
 
 router.get("/getPonderServiceStatus", isLoggedIn, (req, res) => {
   console.log("in get ponder status");
@@ -27,7 +30,12 @@ router.post(
       //@ts-ignore
       req.user.accessToken
     );
+    console.log(allInstalledRepositories);
     let requestJSON = req.body;
+    //@ts-ignore
+    requestJSON.userId = req.user?.id;
+    //@ts-ignore
+    requestJSON.githubToken = req.user?.accessToken;
     if (!allInstalledRepositories.includes(requestJSON.githubUrl))
       throw new Error("Repo not installed");
     await createPonderService(requestJSON);

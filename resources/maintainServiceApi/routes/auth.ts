@@ -23,6 +23,7 @@ router.get(
     session: false,
   }),
   (req, res) => {
+    console.log("successfully signed in");
     const token = jwt.sign(
       JSON.stringify({
         ...req.user,
@@ -31,10 +32,10 @@ router.get(
       config.githubPrivateKey,
       { algorithm: "RS256" }
     );
-    res
+    return res
       .cookie("authJWT", token, {
-        httpOnly: !config.isLocal,
-        secure: !config.isLocal,
+        httpOnly: config.isLocal === "false",
+        secure: config.isLocal === "false",
       })
       .status(200)
       .send("Success");

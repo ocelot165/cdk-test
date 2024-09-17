@@ -18,12 +18,14 @@ export const gitStrategy = new GithubStrategy.Strategy(
     profile: any,
     done: any
   ) {
+    console.log("in git strategy");
     let user = await createUser(
       profile.id,
       profile.username,
       accessToken,
       refreshToken
     );
+    console.log("user", user);
     done(null, user);
   }
 );
@@ -41,6 +43,7 @@ const getJwt = () =>
 
 export async function getUserInstallationID(username: string): Promise<string> {
   const jwtToken = getJwt();
+  console.log(config.githubPrivateKey);
   const apiResult = await fetch(
     `https://api.github.com/users/${username}/installation`,
     {
@@ -52,6 +55,7 @@ export async function getUserInstallationID(username: string): Promise<string> {
     }
   );
   const status = apiResult.status;
+  console.log(apiResult.status);
   if (status !== 200) throw new Error("Could not fetch installation id");
   const result: any = await apiResult.json();
   return result.id;

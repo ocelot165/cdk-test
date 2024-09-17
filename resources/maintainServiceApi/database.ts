@@ -15,7 +15,7 @@ import { uuid } from "uuidv4";
 import { config } from "./config.ts";
 
 const client = new DynamoDBClient(
-  config.isLocal
+  config.isLocal === "true"
     ? {
         endpoint: "http://localhost:8000",
       }
@@ -78,7 +78,7 @@ export async function createUser(
   const command = new PutItemCommand({
     Item: {
       id: {
-        N: id,
+        S: id,
       },
       userName: {
         S: userName,
@@ -102,21 +102,20 @@ export async function createUser(
 }
 
 export async function createPonderService(body: any) {
-  const incrementedStackId = getIncrementedCounter();
-  const id = `e${uuid()}`;
+  const incrementedStackId = await getIncrementedCounter();
   await client.send(
     new PutCommand({
       TableName: "serviceTable",
       Item: {
-        partitionKey: id,
-        id: id,
+        partitionKey: `PonderStack${incrementedStackId}`,
+        id: `PonderStack${incrementedStackId}`,
         userId: body.userId,
         githubUrl: body.githubUrl,
         versionSlug: body.versionSlug,
         githubToken: body.githubToken,
-        chainId: body.chainId,
+        chainId: body.chainId.toString(),
         rpcUrl: body.rpcUrl,
-        incrementedStackId,
+        stackIndex: incrementedStackId.toString(),
       },
     })
   );

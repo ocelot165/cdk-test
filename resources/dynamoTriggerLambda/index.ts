@@ -39,46 +39,68 @@ async function createStackAsync(message: DynamoDBRecord) {
       "githubToken",
       "rpcUrl",
       "chainId",
+      "stackIndex",
     ]);
+    const split = body.githubUrl.split("/");
+    const repoOwnerName = split[0];
+    const repoName = split[1];
+    let templateBody = JSON.stringify(PonderStack);
+    // templateBody = templateBody.replace("PonderStack", body.id);
+    // templateBody = templateBody.replace("ponderstack", body.id.toLowerCase());
     const stackName = body.id;
     const input: CreateStackCommandInput = {
       StackName: stackName,
-      TemplateBody: JSON.stringify(PonderStack),
+      TemplateBody: templateBody,
       Parameters: [
         {
           ParameterKey: "version",
           ParameterValue: body.versionSlug,
-          UsePreviousValue: false,
+          UsePreviousValue: true,
+        },
+        // {
+        //   ParameterKey: "githubUrl",
+        //   ParameterValue: body.githubUrl,
+        //   UsePreviousValue: true,
+        // },
+        {
+          ParameterKey: "repoOwnerName",
+          ParameterValue: repoOwnerName,
+          UsePreviousValue: true,
         },
         {
-          ParameterKey: "githubUrl",
-          ParameterValue: body.githubUrl,
-          UsePreviousValue: false,
+          ParameterKey: "repoName",
+          ParameterValue: repoName,
+          UsePreviousValue: true,
         },
         {
           ParameterKey: "userId",
           ParameterValue: body.userId,
-          UsePreviousValue: false,
+          UsePreviousValue: true,
         },
         {
           ParameterKey: "githubToken",
           ParameterValue: body.githubToken,
-          UsePreviousValue: false,
+          UsePreviousValue: true,
         },
         {
           ParameterKey: "rpcUrl",
           ParameterValue: body.rpcUrl,
-          UsePreviousValue: false,
+          UsePreviousValue: true,
         },
         {
           ParameterKey: "chainId",
           ParameterValue: body.chainId,
-          UsePreviousValue: false,
+          UsePreviousValue: true,
         },
+        // {
+        //   ParameterKey: "githubName",
+        //   ParameterValue: body.githubToken,
+        //   UsePreviousValue: true,
+        // },
         {
-          ParameterKey: "githubName",
-          ParameterValue: body.githubToken,
-          UsePreviousValue: false,
+          ParameterKey: "stackIndex",
+          ParameterValue: body.stackIndex,
+          UsePreviousValue: true,
         },
       ],
       Capabilities: [

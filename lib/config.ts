@@ -1,10 +1,8 @@
 import * as dotenv from "dotenv";
 import path = require("path");
 
-// 1. Configure dotenv to read from our `.env` file
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-// 2. Define a TS Type to type the returned envs from our function below.
 export type ConfigProps = {
   GITHUB_URL?: string;
   USER_ID?: string;
@@ -16,7 +14,6 @@ export type ConfigProps = {
   STACK_INDEX?: string;
 };
 
-// 3. Define a function to retrieve our env variables
 export const getConfig = (): ConfigProps => ({
   GITHUB_URL: process.env.GITHUB_URL,
   USER_ID: process.env.USER_ID,
@@ -26,4 +23,18 @@ export const getConfig = (): ConfigProps => ({
   PONDER_STACK_CONTEXT: process.env.PONDER_STACK_CONTEXT,
   GITHUB_NAME: process.env.GITHUB_USERNAME,
   STACK_INDEX: process.env.STACK_INDEX,
+});
+
+dotenv.config({
+  path: path.resolve(__dirname, "../resources/maintainServiceApi/.env"),
+});
+
+export const getLambdaConfig = () => ({
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID!,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET!,
+  GITHUB_PRIVATE_KEY: process.env.GITHUB_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+  IS_LOCAL: process.env.IS_LOCAL!,
+  CALLBACK_URL: process.env.CALLBACK_URL!,
+  SESSION_SECRET: process.env.SESSION_SECRET!,
+  GITHUB_APP_ID: process.env.GITHUB_APP_ID!,
 });

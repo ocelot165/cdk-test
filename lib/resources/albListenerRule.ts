@@ -11,8 +11,7 @@ import * as cdk from "aws-cdk-lib";
 
 export function createAlbListenerRule(
   stack: PonderStack,
-  albListener: ApplicationListener,
-  stackIndex: number
+  albListener: ApplicationListener
 ) {
   const targetGroup = new ApplicationTargetGroup(stack, "TargetGroup", {
     vpc: stack.vpc,
@@ -26,7 +25,7 @@ export function createAlbListenerRule(
     ],
     healthCheck: {
       interval: cdk.Duration.seconds(10),
-      path: `/${stack.stackName}/readiness`,
+      path: `/PonderStack${stack.stackIndex}/readiness`,
       timeout: cdk.Duration.seconds(5),
       port: "42069",
       unhealthyThresholdCount: 5,
@@ -38,9 +37,11 @@ export function createAlbListenerRule(
     stack,
     `ListenerRule-${randomUUID()}`,
     {
-      conditions: [ListenerCondition.pathPatterns([`/${stack.stackName}/*`])],
+      conditions: [
+        ListenerCondition.pathPatterns([`/PonderStack${stack.stackIndex}/*`]),
+      ],
       action: ListenerAction.forward([targetGroup]),
-      priority: stackIndex,
+      priority: stack.stackIndex,
       listener: albListener,
     }
   );
