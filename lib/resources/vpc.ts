@@ -7,19 +7,19 @@ import { RetentionDays } from "aws-cdk-lib/aws-logs";
 
 export function createVPC(stack: any, prefix: string, cidr: string) {
   const vpc = new ec2.Vpc(stack, `${prefix}Vpc`, {
-    cidr: cidr, //IPs in Range - 65,536
+    cidr: cidr,
     natGateways: 0,
     createInternetGateway: true,
     subnetConfiguration: [
       {
         name: "Public",
         subnetType: ec2.SubnetType.PUBLIC,
-        cidrMask: 24, //IPs in Range - 256
+        cidrMask: 24,
       },
       {
         name: "Private",
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        cidrMask: 24, //IPs in Range - 256
+        cidrMask: 24,
       },
       {
         cidrMask: 24,

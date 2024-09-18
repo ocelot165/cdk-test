@@ -15,7 +15,6 @@ const router = express.Router();
 router.use(passport.authenticate("jwt", { session: false }));
 
 router.get("/getPonderServiceStatus", isLoggedIn, (req, res) => {
-  console.log("in get ponder status");
   res.status(200).send("in get ponder status");
 });
 
@@ -30,7 +29,6 @@ router.post(
       //@ts-ignore
       req.user.accessToken
     );
-    console.log(allInstalledRepositories);
     let requestJSON = req.body;
     //@ts-ignore
     requestJSON.userId = req.user?.id;

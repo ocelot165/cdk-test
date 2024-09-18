@@ -54,8 +54,6 @@ export function createFargate(stack: InfraStack) {
     removalPolicy: cdk.RemovalPolicy.DESTROY,
   });
 
-  const splitArn = stack.stackId.split("/");
-
   const container = taskDefinition.addContainer("ECSContainer", {
     image: ecs.ContainerImage.fromDockerImageAsset(stack.dockerImageAsset),
     logging: ecs.LogDriver.awsLogs({

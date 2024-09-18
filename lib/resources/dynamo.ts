@@ -1,12 +1,6 @@
-import { LambdaToDynamoDB } from "@aws-solutions-constructs/aws-lambda-dynamodb";
 import MaintainServiceStack from "../maintainServiceStack";
 import * as cdk from "aws-cdk-lib";
-import { SubnetType } from "aws-cdk-lib/aws-ec2";
-import {
-  AttributeType,
-  BillingMode,
-  StreamViewType,
-} from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode } from "aws-cdk-lib/aws-dynamodb";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 export function createDynamoTable(stack: MaintainServiceStack) {
@@ -26,23 +20,4 @@ export function createDynamoTable(stack: MaintainServiceStack) {
       resources: [stack.dynamoTable.tableArn],
     })
   );
-  // const { dynamoTable } = new LambdaToDynamoDB(
-  //   stack,
-  //   "LambdaToDynamoDBPattern",
-  //   {
-  //     existingLambdaObj: stack.userFacingLambda,
-  //     dynamoTableProps: {
-  //       deletionProtection: false,
-  //       tableName: "serviceTable",
-  //       partitionKey: {
-  //         name: "id",
-  //         type: cdk.aws_dynamodb.AttributeType.STRING,
-  //       },
-  //       stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
-  //     },
-  //     existingVpc: stack.vpc,
-  //   }
-  // );
-
-  // stack.dynamoTable = dynamoTable;
 }

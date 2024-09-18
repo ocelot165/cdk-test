@@ -23,7 +23,6 @@ router.get(
     session: false,
   }),
   (req, res) => {
-    console.log("successfully signed in");
     const token = jwt.sign(
       JSON.stringify({
         ...req.user,

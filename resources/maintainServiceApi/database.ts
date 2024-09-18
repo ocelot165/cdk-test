@@ -10,7 +10,6 @@ import {
   PutCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { uuid } from "uuidv4";
 //@ts-ignore
 import { config } from "./config.ts";
 

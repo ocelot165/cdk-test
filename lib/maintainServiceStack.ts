@@ -17,7 +17,6 @@ import { createDynamoTriggerLambda } from "./resources/dynamoTriggerLambda";
 import { createALB } from "./resources/alb";
 import { createDb } from "./resources/db";
 import { Bucket } from "aws-cdk-lib/aws-s3";
-import { AnyPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { createS3Bucket } from "./resources/s3";
 
 export default class MaintainServiceStack extends cdk.Stack {

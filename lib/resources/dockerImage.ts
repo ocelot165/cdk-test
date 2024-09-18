@@ -1,6 +1,3 @@
-import * as cdk from "aws-cdk-lib";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import InfraStack from "../ponderStack";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import path from "path";

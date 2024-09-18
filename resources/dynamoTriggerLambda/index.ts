@@ -45,8 +45,6 @@ async function createStackAsync(message: DynamoDBRecord) {
     const repoOwnerName = split[0];
     const repoName = split[1];
     let templateBody = JSON.stringify(PonderStack);
-    // templateBody = templateBody.replace("PonderStack", body.id);
-    // templateBody = templateBody.replace("ponderstack", body.id.toLowerCase());
     const stackName = body.id;
     const input: CreateStackCommandInput = {
       StackName: stackName,
@@ -57,11 +55,6 @@ async function createStackAsync(message: DynamoDBRecord) {
           ParameterValue: body.versionSlug,
           UsePreviousValue: true,
         },
-        // {
-        //   ParameterKey: "githubUrl",
-        //   ParameterValue: body.githubUrl,
-        //   UsePreviousValue: true,
-        // },
         {
           ParameterKey: "repoOwnerName",
           ParameterValue: repoOwnerName,
@@ -92,11 +85,6 @@ async function createStackAsync(message: DynamoDBRecord) {
           ParameterValue: body.chainId,
           UsePreviousValue: true,
         },
-        // {
-        //   ParameterKey: "githubName",
-        //   ParameterValue: body.githubToken,
-        //   UsePreviousValue: true,
-        // },
         {
           ParameterKey: "stackIndex",
           ParameterValue: body.stackIndex,
@@ -109,7 +97,6 @@ async function createStackAsync(message: DynamoDBRecord) {
         "CAPABILITY_NAMED_IAM",
       ],
       RoleARN: process.env.CFM_ROLE_ARN,
-      // ResourceTypes: ["AWS::*"],
       OnFailure: "ROLLBACK",
       EnableTerminationProtection: false,
     };
